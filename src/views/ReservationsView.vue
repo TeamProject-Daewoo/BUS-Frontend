@@ -4,7 +4,7 @@
 
     <div class="toolbar">
       <button class="btn" @click="exportCsv">엑셀 다운로드</button>
-      <input v-model="q" placeholder="예약자 이름 검색" />
+      <input v-model="q" placeholder="예약자 이름(회원/예약자명) 검색" />
       <button class="btn-outline" @click="filter">검색</button>
     </div>
 
@@ -27,9 +27,12 @@
             <td class="id">{{ r.reservationId }}</td>
             <td><span class="badge" :class="statusClass(r.status)">{{ r.status || '-' }}</span></td>
             <td>{{ r.roomcode || '-' }}</td>
-            <td>{{ r.checkIn || '-' }} ~ {{ r.checkOut || '-' }}</td>
-            <td>{{ r.userDisplayName || '-' }} <span v-if="r.userName">({{ r.userName }})</span></td>
-            <td>{{ r.userPhone || '-' }}</td>
+            <td>{{ r.checkInDate || '-' }} ~ {{ r.checkOutDate || '-' }}</td>
+            <td>
+              {{ r.reservName || r.userDisplayName || '-' }}
+              <span v-if="r.userName">({{ r.userName }})</span>
+            </td>
+            <td>{{ r.reservPhone || r.userPhone || '-' }}</td>
             <td>{{ n(r.totalPrice) }}원</td>
             <td>{{ dt(r.reservationDate) }}</td>
           </tr>
@@ -52,19 +55,20 @@
 import { ref, computed, onMounted } from 'vue'
 import { getReservations } from '@/api/business'
 
-// (선택) utils/csv가 없으면 간단 대체
+// 간단 CSV 유틸(없으면 대체)
 function toCsv(rows) {
   if (!rows?.length) return ''
   const headers = Object.keys(rows[0])
-  const escape = v => `"${String(v ?? '').replaceAll('"','""')}"`
-  const lines = [headers.join(','), ...rows.map(r => headers.map(h => escape(r[h])).join(','))]
-  return lines.join('\n')
+  const esc = v => `"${String(v ?? '').replaceAll('"','""')}"`
+  return [headers.join(','), ...rows.map(r => headers.map(h => esc(r[h])).join(','))].join('\n')
 }
 function download(filename, text) {
   const blob = new Blob([text], { type: 'text/csv;charset=utf-8;' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
-  a.href = url; a.download = filename; a.click()
+  a.href = url
+  a.download = filename
+  a.click()
   URL.revokeObjectURL(url)
 }
 
@@ -76,15 +80,17 @@ const size = ref(10)
 onMounted(async () => {
   try {
     const { data } = await getReservations()
-    // ✅ 백엔드 ReservationDTO 필드에 정확히 맞춤
-    // ReservationDTO: reservationId, userName, userDisplayName, userEmail, userPhone,
-    //                 checkIn, checkOut, roomcode, status, totalPrice, reservationDate
+    // ✅ 백엔드 ReservationDTO 맞춤
+    // reservationId, userName, userDisplayName, userEmail, userPhone,
+    // reservName, reservPhone, checkInDate, checkOutDate, roomcode, status, totalPrice, reservationDate
     list.value = (data ?? []).map(x => ({
       reservationId: x.reservationId,
       status: x.status,
       roomcode: x.roomcode,
-      checkIn: x.checkIn,
-      checkOut: x.checkOut,
+      checkInDate: x.checkInDate,
+      checkOutDate: x.checkOutDate,
+      reservName: x.reservName,
+      reservPhone: x.reservPhone,
       userDisplayName: x.userDisplayName,
       userName: x.userName,
       userEmail: x.userEmail,
@@ -98,15 +104,18 @@ onMounted(async () => {
   }
 })
 
-const filtered = computed(() =>
-  !q.value ? list.value
-    : list.value.filter(x =>
-        (x.userDisplayName || '').includes(q.value) || (x.userName || '').includes(q.value)
-      )
-)
+const filtered = computed(() => {
+  if (!q.value) return list.value
+  const kw = q.value
+  return list.value.filter(x =>
+    (x.reservName || '').includes(kw) ||
+    (x.userDisplayName || '').includes(kw) ||
+    (x.userName || '').includes(kw)
+  )
+})
 
 const paged = computed(() =>
-  filtered.value.slice((page.value-1)*size.value, page.value*size.value)
+  filtered.value.slice((page.value - 1) * size.value, page.value * size.value)
 )
 
 function statusClass(s) {
@@ -117,20 +126,20 @@ function statusClass(s) {
   return ''
 }
 
-function n(v){ return (v ?? 0).toLocaleString() }
-function dt(v){ return v ? String(v).replace('T',' ') : '' }
-function filter(){ page.value = 1 }
+function n(v) { return (v ?? 0).toLocaleString() }
+function dt(v) { return v ? String(v).replace('T',' ') : '' }
+function filter() { page.value = 1 }
 
 function exportCsv() {
   const rows = filtered.value.map(r => ({
     예약ID: r.reservationId,
     상태: r.status,
     객실: r.roomcode,
-    체크인: r.checkIn,
-    체크아웃: r.checkOut,
-    예약자: r.userDisplayName,
+    체크인: r.checkInDate,
+    체크아웃: r.checkOutDate,
+    예약자: r.reservName || r.userDisplayName,
     아이디: r.userName,
-    연락처: r.userPhone,
+    연락처: r.reservPhone || r.userPhone,
     금액: r.totalPrice,
     예약일시: r.reservationDate
   }))

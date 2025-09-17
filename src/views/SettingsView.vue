@@ -144,7 +144,6 @@ onMounted(async () => {
     }
   } catch (e) {
     console.error('GET /hotel/intro 실패', e)
-    // intro는 없을 수 있으니 alert 생략
   } finally {
     loading.value.intro = false
   }
@@ -162,7 +161,6 @@ async function saveBasic() {
       mapy: basic.value.mapy,
     }
     const { data } = await updateHotel(payload)
-    // 응답으로 최신 값 반영
     basic.value = {
       id: data.id ?? null,
       contentid: data.contentid ?? '',

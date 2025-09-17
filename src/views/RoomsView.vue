@@ -48,17 +48,24 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { getRooms, createRoom, updateRoomApi, deleteRoomApi } from '@/api/business';
+import { getRooms, createRoom, updateRoomApi, deleteRoomApi } from '@/api/business'
 
 const rooms = ref([])
-const form = ref({ roomtitle:'', roombasecount:2, roommaxcount:2, roomoffseasonminfee1:50000, roompeakseasonminfee1:80000 })
+const form = ref({
+  roomtitle: '',
+  roombasecount: 2,
+  roommaxcount: 2,
+  roomoffseasonminfee1: 50000,
+  roompeakseasonminfee1: 80000
+})
 
 const dlg = ref(null)
 const editForm = ref({})
 const editingId = ref(null)
 
 onMounted(load)
-async function load(){
+
+async function load() {
   try {
     const { data } = await getRooms()
     rooms.value = data ?? []
@@ -67,35 +74,55 @@ async function load(){
     rooms.value = []
   }
 }
-async function add(){
-  if(!form.value.roomtitle) return
+
+async function add() {
+  if (!form.value.roomtitle) return
   try {
     await createRoom(form.value)
-    Object.assign(form.value, { roomtitle:'', roombasecount:2, roommaxcount:2, roomoffseasonminfee1:50000, roompeakseasonminfee1:80000 })
+    Object.assign(form.value, {
+      roomtitle: '',
+      roombasecount: 2,
+      roommaxcount: 2,
+      roomoffseasonminfee1: 50000,
+      roompeakseasonminfee1: 80000
+    })
     await load()
   } catch (e) {
     console.error('[rooms] create failed', e)
   }
 }
-function edit(r){ editingId.value = r.id; editForm.value = { ...r }; dlg.value?.showModal() }
-function close(){ dlg.value?.close() }
-async function save(){
+
+function edit(r) {
+  editingId.value = r.id
+  editForm.value = { ...r }
+  dlg.value?.showModal()
+}
+
+function close() {
+  dlg.value?.close()
+}
+
+async function save() {
   try {
     await updateRoomApi(editingId.value, editForm.value)
-    close(); await load()
+    close()
+    await load()
   } catch (e) {
     console.error('[rooms] update failed', e)
   }
 }
-async function remove(id){
-  if(!confirm('삭제할까요?')) return
+
+async function remove(id) {
+  if (!confirm('삭제할까요?')) return
   try {
-    await deleteRoomApi(id); await load()
+    await deleteRoomApi(id)
+    await load()
   } catch (e) {
     console.error('[rooms] delete failed', e)
   }
 }
-function n(v){ return (v ?? 0).toLocaleString() }
+
+function n(v) { return (v ?? 0).toLocaleString() }
 </script>
 
 <style scoped>
