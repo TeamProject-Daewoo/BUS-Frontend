@@ -4,7 +4,7 @@
       <h1>호텔 관리</h1>
     </div>
     <nav class="sidebar-nav">
-      <RouterLink to="/" class="nav-item">대시보드</RouterLink>
+      <RouterLink to="/dashboard" class="nav-item">대시보드</RouterLink>
       <RouterLink to="/reservations" class="nav-item">예약 관리</RouterLink>
       <RouterLink to="/rooms" class="nav-item">객실 관리</RouterLink>
       <RouterLink to="/settings" class="nav-item">호텔 설정</RouterLink>
