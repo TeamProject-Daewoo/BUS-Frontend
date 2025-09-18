@@ -1,9 +1,4 @@
-import axios from 'axios'
-
-const http = axios.create({
-  baseURL: 'http://localhost:8889',
-  timeout: 10000,
-});
+import http from './axios'; 
 
 // 호텔 기본
 export const getHotel = () => http.get('/business/hotel');

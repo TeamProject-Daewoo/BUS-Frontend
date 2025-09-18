@@ -28,8 +28,6 @@ function goAdmin() {
   window.location.href = 'http://localhost:5174';
 }
 
-console.log('현재 Access Token:', authStore.accessToken);
-
 const handleLogout = async () => {
   try {
     await api.post('/api/auth/logout');

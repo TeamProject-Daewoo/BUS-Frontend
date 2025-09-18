@@ -82,8 +82,10 @@ const fetchProfile = async () => {
   } catch (error) {
     console.error("프로필 정보를 불러오는 데 실패했습니다.", error);
     alert("세션이 만료되었거나 로그인이 필요합니다.");
-    authStore.clearToken(); // 에러 발생 시 토큰 정리
-    router.push('/login');
+    
+    // 👇 2. clearToken -> logout으로 수정
+    authStore.logout(); 
+    router.push('/loginview'); // 로그인 페이지 경로 확인
   }
 };
 
@@ -141,17 +143,32 @@ const withdraw = async () => {
 const handleLogout = async () => {
   try {
     await apiClient.post('/api/auth/logout');
-    authStore.clearToken(); // 클라이언트 토큰 삭제
+    
+    // 👇 2. clearToken -> logout으로 수정
+    authStore.logout();
+    
     alert('로그아웃되었습니다.');
-    router.push('/login');
+    router.push('/loginview'); // 로그인 페이지 경로 확인
   } catch (error) {
     console.error('로그아웃 실패:', error);
   }
 };
 
-watch(() => {
-  fetchProfile();
-});
+// 👇 3. onMounted/watch 로직을 isInitialized 상태 감시로 수정 (경쟁 상태 해결)
+watch(
+  () => authStore.isInitialized,
+  (isInitialized) => {
+    // 앱 초기화(자동 로그인 시도)가 끝난 후에만 프로필 정보를 가져옴
+    if (isInitialized && authStore.accessToken) {
+      fetchProfile();
+    } else if (isInitialized && !authStore.accessToken) {
+      // 초기화 후에도 토큰이 없으면 로그인 페이지로 보냄
+      alert('로그인이 필요합니다.');
+      router.push('/loginview');
+    }
+  },
+  { immediate: true } // 컴포넌트 로드 시 즉시 실행
+);
 </script>
 
 <style scoped>

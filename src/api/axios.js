@@ -14,6 +14,8 @@ api.interceptors.request.use(
     (config) => {
         const authStore = useAuthStore();
         const accessToken = authStore.accessToken; // Pinia 스토어에서 토큰 가져오기
+
+        console.log("Sending request with token:", accessToken);
         
         if (accessToken) {
             config.headers['Authorization'] = `Bearer ${accessToken}`;

@@ -145,6 +145,7 @@ function exportCsv() {
   }))
   download('reservations.csv', toCsv(rows))
 }
+
 </script>
 
 <style scoped>

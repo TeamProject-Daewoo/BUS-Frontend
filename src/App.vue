@@ -22,6 +22,7 @@ onMounted(async () => {
       const response = await api.post('/api/auth/refresh');
       authStore.setToken(response.data.accessToken);
       console.log("토큰 재발급 성공");
+      console.log('현재 Access Token:', authStore.accessToken);
     } catch (error) {
       console.log("자동 로그인 실패, 유효한 리프레시 토큰이 없습니다.");
     } finally {
