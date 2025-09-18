@@ -188,7 +188,7 @@ async function saveIntro() {
 </script>
 
 <style scoped>
-.page { max-width: 900px; margin: 0 auto; }
+.page { max-width: 900px;}
 .hint { margin: 12px 0; color:#6b7280; }
 .card { padding:16px; border:1px solid #e5e7eb; border-radius:12px; margin:16px 0; background:#fff; }
 .grid2 { display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:12px; margin-bottom:12px; }

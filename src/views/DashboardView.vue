@@ -116,7 +116,7 @@ const occupancyPct = computed(() => roomsTotal.value
 </script>
 
 <style scoped>
-.dashboard { max-width: 1080px; margin: 0 auto; }
+.dashboard { max-width: 1080px; }
 .toolbar { display:flex; align-items:center; justify-content:space-between; margin-top: 8px; }
 .today { color: #6b7280; font-size: 14px; }
 .btn { background:#22c55e; color:#fff; border:none; padding:8px 12px; border-radius:8px; }
