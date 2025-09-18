@@ -1,35 +1,38 @@
+<!-- src/App.vue -->
 <script setup>
-import { onMounted, computed } from 'vue';
-import { useRoute } from 'vue-router';
-import { RouterView } from 'vue-router'
+import { onMounted, computed } from 'vue'
+import { useRoute, RouterView } from 'vue-router'
 import Sidebar from './components/common/Sidebar.vue'
-import Footer from './components/common/Footer.vue';
-import Header from './components/common/Header.vue';
+import Footer from './components/common/Footer.vue'
+import Header from './components/common/Header.vue'
 
-import { useAuthStore } from './api/auth';
-import api from './api/axios';
+import { useAuthStore } from './api/auth'
+import api from './api/axios'
 
-const authStore = useAuthStore();
-const route = useRoute();
+const authStore = useAuthStore()
+const route = useRoute()
 
-const layout = computed(() => {
-  return route.meta.layout || 'DefaultLayout';
-});
+const layout = computed(() => route.meta.layout || 'DefaultLayout')
 
 onMounted(async () => {
+  // 1) 로컬스토리지에 있는 accessToken 복원 + roles 파싱
   if (!authStore.isInitialized) {
+    authStore.init()
+  }
+
+  // 2) accessToken이 없으면 "조용히" 자동 로그인 시도(쿠키 refreshToken 필요)
+  if (!authStore.accessToken) {
     try {
-      const response = await api.post('/api/auth/refresh');
-      authStore.setToken(response.data.accessToken);
-      console.log("토큰 재발급 성공");
-      console.log('현재 Access Token:', authStore.accessToken);
-    } catch (error) {
-      console.log("자동 로그인 실패, 유효한 리프레시 토큰이 없습니다.");
-    } finally {
-      authStore.setInitialized();
+      const { data } = await api.post('/api/auth/refresh')
+      if (data?.accessToken) {
+        authStore.setToken(data.accessToken)
+        console.log('[App] 토큰 재발급 성공')
+      }
+    } catch {
+      console.log('[App] 자동 로그인 실패(유효 refreshToken 없음)')
     }
   }
-});
+})
 </script>
 
 <template>
@@ -56,13 +59,10 @@ onMounted(async () => {
 <style>
 @import '@/assets/main.css';
 
-
-
 .app-layout {
   display: flex;
-  padding-top: 80px; 
+  padding-top: 80px;
 }
-
 .main-content {
   flex-grow: 1;
   padding: 32px;
@@ -72,6 +72,6 @@ onMounted(async () => {
   transition: height 0.5s ease-in-out;
 }
 .footer-container {
-  height: 300px;
+  min-height: 300px;
 }
 </style>

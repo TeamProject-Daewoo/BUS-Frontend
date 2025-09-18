@@ -1,21 +1,25 @@
-import http from './axios'; 
+// src/api/business.js
+import api from './axios'
+
+const q = (contentid) => (contentid ? `?contentid=${encodeURIComponent(contentid)}` : '')
+
+// 호텔 목록(내가 운영하는 호텔들)
+export const listMyHotels = () => api.get('/business/hotels')
 
 // 호텔 기본
-export const getHotel = () => http.get('/business/hotel');
-export const updateHotel = (payload) => http.put('/business/hotel', payload);
+export const getHotel = (contentid) => api.get(`/business/hotel${q(contentid)}`)
+export const updateHotel = (payload, contentid) => api.put(`/business/hotel${q(contentid)}`, payload)
 
 // 호텔 인트로
-export const getHotelIntro = () => http.get('/business/hotel/intro');
-export const upsertHotelIntro = (payload) => http.put('/business/hotel/intro', payload);
+export const getHotelIntro = (contentid) => api.get(`/business/hotel/intro${q(contentid)}`)
+export const upsertHotelIntro = (payload, contentid) => api.put(`/business/hotel/intro${q(contentid)}`, payload)
 
 // 객실
-export const getRooms = () => http.get('/business/rooms');
-export const createRoom = (room) => http.post('/business/rooms', room);
-export const updateRoomApi = (id, room) => http.put(`/business/rooms/${id}`, room);
-export const deleteRoomApi = (id) => http.delete(`/business/rooms/${id}`);
+export const getRooms = (contentid) => api.get(`/business/rooms${q(contentid)}`)
+export const createRoom = (room, contentid) => api.post(`/business/rooms${q(contentid)}`, room)
+export const updateRoomApi = (id, room, contentid) => api.put(`/business/rooms/${id}${q(contentid)}`, room)
+export const deleteRoomApi = (id, contentid) => api.delete(`/business/rooms/${id}${q(contentid)}`)
 
 // 예약/결제
-export const getReservations = () => http.get('/business/reservations');
-export const getPayments = () => http.get('/business/payments');
-
-export default http;
+export const getReservations = (contentid) => api.get(`/business/reservations${q(contentid)}`)
+export const getPayments = (contentid) => api.get(`/business/payments${q(contentid)}`)

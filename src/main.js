@@ -5,8 +5,10 @@ import router from './router' // router/index.js 에서 만든 라우터 가져�
 
 const app = createApp(App)
 const pinia = createPinia();
-app.use(router) // Vue 앱에 라우터 등록
 
 app.use(pinia)
+app.use(router) // Vue 앱에 라우터 등록
+
+
 
 app.mount('#app')

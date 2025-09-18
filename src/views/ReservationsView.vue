@@ -1,3 +1,4 @@
+<!-- src/views/ReservationsView.vue -->
 <template>
   <div>
     <h1>숙소 예약</h1>
@@ -8,7 +9,11 @@
       <button class="btn-outline" @click="filter">검색</button>
     </div>
 
-    <div class="card table-container">
+    <div class="hint" v-if="!store.selectedContentId">
+      사이드바 또는 <RouterLink to="/hotels">호텔 선택</RouterLink>에서 호텔을 먼저 선택하세요.
+    </div>
+
+    <div v-else class="card table-container">
       <table>
         <thead>
           <tr>
@@ -43,7 +48,7 @@
       </table>
     </div>
 
-    <div class="pager">
+    <div v-if="store.selectedContentId" class="pager">
       <button :disabled="page===1" @click="page--">〈</button>
       <span>{{ page }}</span>
       <button :disabled="page*size>=filtered.length" @click="page++">〉</button>
@@ -52,37 +57,38 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch } from 'vue'
+import { RouterLink } from 'vue-router'
+import { useHotelStore } from '@/stores/hotel'
 import { getReservations } from '@/api/business'
 
-// 간단 CSV 유틸(없으면 대체)
 function toCsv(rows) {
   if (!rows?.length) return ''
   const headers = Object.keys(rows[0])
-  const esc = v => `"${String(v ?? '').replaceAll('"','""')}"`
+  const esc = v => `"${String(v ?? '').replaceAll('"','""')}"`;
   return [headers.join(','), ...rows.map(r => headers.map(h => esc(r[h])).join(','))].join('\n')
 }
 function download(filename, text) {
   const blob = new Blob([text], { type: 'text/csv;charset=utf-8;' })
   const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  a.click()
+  const a = document.createElement('a'); a.href = url; a.download = filename; a.click()
   URL.revokeObjectURL(url)
 }
 
+const store = useHotelStore()
 const list = ref([])
 const q = ref('')
 const page = ref(1)
 const size = ref(10)
 
-onMounted(async () => {
+watch(() => store.selectedContentId, async (cid) => {
+  if (!cid) { list.value = []; return }
+  await load()
+}, { immediate: true })
+
+async function load() {
   try {
-    const { data } = await getReservations()
-    // ✅ 백엔드 ReservationDTO 맞춤
-    // reservationId, userName, userDisplayName, userEmail, userPhone,
-    // reservName, reservPhone, checkInDate, checkOutDate, roomcode, status, totalPrice, reservationDate
+    const { data } = await getReservations(store.selectedContentId)
     list.value = (data ?? []).map(x => ({
       reservationId: x.reservationId,
       status: x.status,
@@ -98,11 +104,12 @@ onMounted(async () => {
       totalPrice: x.totalPrice,
       reservationDate: x.reservationDate
     }))
+    page.value = 1
   } catch (e) {
     console.error('[reservations] load failed', e)
     list.value = []
   }
-})
+}
 
 const filtered = computed(() => {
   if (!q.value) return list.value
@@ -145,7 +152,6 @@ function exportCsv() {
   }))
   download('reservations.csv', toCsv(rows))
 }
-
 </script>
 
 <style scoped>
@@ -163,4 +169,6 @@ thead { background:#f9fafb; }
 .pager { display:flex; gap:8px; justify-content:center; padding:16px; }
 .btn { padding:8px 12px; background:#22c55e; color:#fff; border:none; border-radius:6px; }
 .btn-outline { padding:8px 12px; border:1px solid #ddd; background:#fff; border-radius:6px; }
+.hint { margin: 12px 0; color:#6b7280; }
+.card { padding:16px; border:1px solid #e5e7eb; border-radius:12px; margin:12px 0; background:#fff; }
 </style>

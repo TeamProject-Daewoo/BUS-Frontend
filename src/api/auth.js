@@ -1,52 +1,79 @@
-import { defineStore } from 'pinia';
+// src/api/auth.js
+import { defineStore } from 'pinia'
+
+const STORAGE_KEY = 'accessToken'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
-    accessToken: null,
+    accessToken: localStorage.getItem(STORAGE_KEY) || null,
     loggedInUser: null,
     userName: null,
+    roles: [], // ["ROLE_USER", "ROLE_BUSINESS", ...]
     isInitialized: false,
   }),
-  actions: {
-    setToken(token) {
-      this.accessToken = token;
 
-      const payload = this.parseJwt(token);
-      
-      this.loggedInUser = payload?.sub || null;
-      this.userName = payload?.name || null;
+  getters: {
+    isBusiness: (s) => s.roles.includes('ROLE_BUSINESS'),
+    isAdmin: (s) => s.roles.includes('ROLE_ADMIN'),
+    isUser: (s) => s.roles.includes('ROLE_USER'),
+  },
+
+  actions: {
+    init() {
+      const t = localStorage.getItem(STORAGE_KEY)
+      if (t) this.setToken(t)
+      this.isInitialized = true
+
+      // 다른 탭과 동기화
+      window.addEventListener('storage', (e) => {
+        if (e.key === STORAGE_KEY) {
+          const next = e.newValue
+          if (next) this.setToken(next)
+          else this.clearToken()
+        }
+      })
     },
+
+    setToken(token) {
+      this.accessToken = token || null
+      if (token) localStorage.setItem(STORAGE_KEY, token)
+      else localStorage.removeItem(STORAGE_KEY)
+
+      const payload = this.parseJwt(token)
+      this.loggedInUser = payload?.sub || null
+      this.userName = payload?.name || null
+
+      const auth = (payload?.auth || '').trim()
+      this.roles = auth ? auth.split(',').map(s => s.trim()) : []
+    },
+
+    clearToken() {
+      this.setToken(null)
+      this.loggedInUser = null
+      this.userName = null
+      this.roles = []
+    },
+
     logout() {
-      this.accessToken = null;
-      this.loggedInUser = null;
-      this.userName = null;
+      this.clearToken()
     },
+
     parseJwt(token) {
-      if (!token) {
-        return null;
-      }
+      if (!token) return null
       try {
-        const base64Url = token.split('.')[1];
-        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-        
-        // UTF-8 디코딩을 지원하는 방식으로 수정
+        const base64Url = token.split('.')[1]
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
         const jsonPayload = decodeURIComponent(
           atob(base64)
             .split('')
-            .map(function (c) {
-              return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-            })
+            .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
             .join('')
-        );
-
-        return JSON.parse(jsonPayload);
+        )
+        return JSON.parse(jsonPayload)
       } catch (e) {
-        console.error("Invalid JWT token provided:", e);
-        return null;
+        console.error('[auth] Invalid JWT token:', e)
+        return null
       }
     },
-    setInitialized() {
-      this.isInitialized = true;
-    },
   },
-});
+})
