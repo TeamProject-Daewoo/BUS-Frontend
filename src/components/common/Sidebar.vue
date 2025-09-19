@@ -54,7 +54,7 @@ function onChange() {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  flex: 0 0 240px;
+  flex: 0 0 270px;
   writing-mode: horizontal-tb;
   text-orientation: mixed;
 }

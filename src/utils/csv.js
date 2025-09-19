@@ -1,4 +1,3 @@
-// src/utils/csv.js
 export function exportToCsv(filename, rows) {
   if (!rows || !rows.length) return
   const headers = Object.keys(rows[0])
