@@ -9,10 +9,10 @@
         <select v-model="selected" @change="onChange">
           <option value="" disabled>호텔을 선택하세요</option>
           <option v-for="h in store.hotels" :key="h.contentid" :value="h.contentid">
-            {{ h.title || h.contentid }}
+            {{ h.title || h.contentid}}
           </option>
         </select>
-        <RouterLink to="/hotels" class="choose-link">목록…</RouterLink>
+        <!-- (삭제됨) <RouterLink to="/hotels" class="choose-link">목록…</RouterLink> -->
       </div>
     </div>
 
@@ -58,11 +58,7 @@ function onChange() {
   writing-mode: horizontal-tb;
   text-orientation: mixed;
 }
-.sidebar .nav-item {
-  display: block;
-  writing-mode: horizontal-tb;
-  white-space: nowrap;
-}
+.sidebar .nav-item { display:block; writing-mode: horizontal-tb; white-space:nowrap; }
 .sidebar-header { padding: 16px 16px 12px; border-bottom: 1px solid var(--border-color, #e5e7eb); }
 .sidebar-header h1 { margin: 0 0 8px; font-size: 18px; color: var(--text-primary, #111827); }
 .sidebar-nav { display: flex; flex-direction: column; padding: 12px; }
@@ -71,16 +67,9 @@ function onChange() {
   border-radius: 8px; font-weight: 500; transition: all 0.2s ease;
 }
 .nav-item:hover { background-color: var(--background-color, #f9fafb); color: var(--primary-color, #16a34a); }
-.nav-item.router-link-exact-active {
-  background-color: var(--primary-color-light, #e9f7ef);
-  color: var(--primary-color, #16a34a);
-  font-weight: 600;
-}
+.nav-item.router-link-exact-active { background-color:#e9f7ef; color:#16a34a; font-weight:600; }
 
 .hotel-select { display:flex; gap:8px; align-items:center; }
-.hotel-select select {
-  flex:1; padding:8px; border:1px solid #e5e7eb; border-radius:8px; background:#fff; font-size:13px;
-}
-.choose-link { font-size:12px; color:#2563eb; text-decoration:none; }
-.choose-link:hover { text-decoration:underline; }
+.hotel-select select { flex:1; padding:8px; border:1px solid #e5e7eb; border-radius:8px; background:#fff; font-size:13px; }
+/* .choose-link 스타일은 제거해도 됨 */
 </style>

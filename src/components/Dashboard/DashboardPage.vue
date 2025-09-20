@@ -1,10 +1,11 @@
 <template>
   <div>
-    <!-- 상단 한 줄 바 -->
+    <!-- 상단 바 -->
     <DashboardTopBar
       v-model:startDate="startDate"
       v-model:endDate="endDate"
       v-model:rangeDays="rangeDays"
+      v-model:scope="scope"
       :loading="loading"
       @apply="applyCustomRange"
       @clear="clearCustomRange"
@@ -53,15 +54,13 @@
       />
 
       <NewCustomers :reservations="reservations" />
-
       <RecentActivities :reservations="reservations" />
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
-import apexchart from 'vue3-apexcharts'
+import { ref, computed, watch } from 'vue'
 import { useHotelStore } from '@/stores/hotel'
 import { getReservations, getRooms } from '@/api/business'
 
@@ -73,15 +72,17 @@ import NewCustomers from './NewCustomers.vue'
 import RecentActivities from './RecentActivities.vue'
 
 const store = useHotelStore()
+
 const loading = ref(true)
-const reservations = ref([])
+const reservations = ref([])   // 전체/단일 모두 여기로 집계
 const rooms = ref([])
 
+const scope = ref('single')     // 'single' | 'all'
 const rangeDays = ref(30)
 const pkgRangeDays = ref(30)
 const typeRangeDays = ref(30)
 
-/* 사용자 지정 날짜 범위 */
+/* 날짜 범위 */
 const startDate = ref('')
 const endDate   = ref('')
 function applyCustomRange () {
@@ -116,32 +117,54 @@ const rangeDateLabels = computed(() => {
 })
 const dayCount = computed(() => rangeDateLabels.value.length)
 
-/* Apex 보조 라벨 */
-const edgeLabel = (val, _ts, third) => {
-  const labels = (third && typeof third === 'object' && third.w?.globals?.labels)
-    ? third.w.globals.labels : rangeDateLabels.value
-  const idx = (third && typeof third === 'object' && typeof third.i === 'number')
-    ? third.i : (typeof third === 'number' ? third : labels.indexOf(val))
-  const last = Math.max(0, labels.length - 1)
-  return (idx === 0 || idx === last) ? val : ''
-}
-
 /* 데이터 로드 */
 async function load () {
-  if (!store.selectedContentId) { loading.value=false; reservations.value=[]; rooms.value=[]; return }
   loading.value = true
   try {
-    const [resResv, resRooms] = await Promise.all([
-      getReservations(store.selectedContentId),
-      getRooms(store.selectedContentId)
-    ])
-    reservations.value = Array.isArray(resResv.data) ? resResv.data : []
-    rooms.value        = Array.isArray(resRooms.data) ? resRooms.data : []
-  } finally { loading.value = false }
-}
-watch(() => store.selectedContentId, load, { immediate: true })
+    // 전체 모드
+    if (scope.value === 'all') {
+      // 호텔 목록이 없으면 로드
+      if (!store.hotels.length) {
+        await store.loadHotels()
+      }
+      const ids = (store.hotels || []).map(h => h.contentid).filter(Boolean)
 
-/* KPI */
+      // 모든 호텔의 예약/객실을 병렬로 수집
+      const resvAll = await Promise.all(ids.map(async (cid) => {
+        try {
+          const { data } = await getReservations(cid)
+          return Array.isArray(data) ? data.map(x => ({ ...x, _hid: cid })) : []
+        } catch { return [] }
+      }))
+      const roomsAll = await Promise.all(ids.map(async (cid) => {
+        try {
+          const { data } = await getRooms(cid)
+          return Array.isArray(data) ? data.map(x => ({ ...x, _hid: cid })) : []
+        } catch { return [] }
+      }))
+
+      reservations.value = resvAll.flat()
+      rooms.value = roomsAll.flat()
+    }
+    // 단일(선택 호텔) 모드
+    else {
+      if (!store.selectedContentId) { reservations.value=[]; rooms.value=[]; return }
+      const [resResv, resRooms] = await Promise.all([
+        getReservations(store.selectedContentId),
+        getRooms(store.selectedContentId)
+      ])
+      reservations.value = Array.isArray(resResv.data) ? resResv.data.map(x => ({ ...x, _hid: store.selectedContentId })) : []
+      rooms.value        = Array.isArray(resRooms.data) ? resRooms.data.map(x => ({ ...x, _hid: store.selectedContentId })) : []
+    }
+  } finally {
+    loading.value = false
+  }
+}
+
+/* scope/선택호텔 바뀔 때마다 로드 */
+watch([() => store.selectedContentId, scope], load, { immediate: true })
+
+/* KPI (공통: reservations/rooms만 보고 계산) */
 const bookingsByDay = computed(() => {
   const map = Object.fromEntries(rangeDateLabels.value.map(x => [x,0]))
   for (const r of reservations.value) {
@@ -163,18 +186,24 @@ const thisWeekBookings = computed(() => {
 
 const roomsTotal = computed(() => rooms.value.length)
 const activeToday = computed(() => {
-  const t = rangeDateLabels.value[rangeDateLabels.value.length-1]; const set = new Set()
+  const t = rangeDateLabels.value[rangeDateLabels.value.length-1]
+  const set = new Set()
   for (const r of reservations.value) {
     if (isCanceled(r.status)) continue
     const inOk = dOnly(r.checkInDate) <= t
     const outOk = dOnly(r.checkOutDate) > t
-    if (inOk && outOk) set.add(r.roomcode || `unknown_${r.reservationId}`)
+    if (inOk && outOk) {
+      const base = r.roomcode || `unknown_${r.reservationId}`
+      // 전체 모드에서도 호텔별 유니크 보장
+      const key = (r._hid ? `${r._hid}|` : '') + base
+      set.add(key)
+    }
   }
   return set.size
 })
 const roomsAvailable = computed(() => Math.max(roomsTotal.value - activeToday.value, 0))
 
-/* 매출/지출 */
+/* 매출/지출/순이익 */
 const revenueDailyRaw = computed(() => {
   const map = Object.fromEntries(rangeDateLabels.value.map(d => [d,0]))
   for (const r of reservations.value) {
@@ -187,12 +216,11 @@ const expensesDailyRaw = computed(() => {
   const out = {}; for (const d of Object.keys(revenueDailyRaw.value)) out[d] = Math.round(revenueDailyRaw.value[d]*0.35)
   return out
 })
-
-/* 순이익 */
 const profitDailyRaw = computed(() => {
   const out = {}; for (const d of rangeDateLabels.value) out[d] = (revenueDailyRaw.value[d]||0)-(expensesDailyRaw.value[d]||0)
   return out
 })
+
 const profitTotal = computed(() => Object.values(profitDailyRaw.value).reduce((a,b)=>a+b,0))
 const profitMonth = computed(() => {
   const d = new Date(); const ym = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`
@@ -203,8 +231,6 @@ const profitWeek = computed(() => {
   for (let i=0;i<7;i++){ const d = addDays(monday,i); set.add(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`) }
   return Object.entries(profitDailyRaw.value).reduce((s,[k,v])=>s+(set.has(k)?v:0),0)
 })
-
-/* 합계 */
 const expensesTotal = computed(() => Object.values(expensesDailyRaw.value).reduce((a,b)=>a+b,0))
 const expensesMonth = computed(() => {
   const d = new Date(); const ym = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`
@@ -223,7 +249,7 @@ const sparkRooms    = computed(() => toSpark(bookingsByDay.value))
 const sparkExpenses = computed(() => toSpark(expensesDailyRaw.value))
 const sparkProfit   = computed(() => toSpark(profitDailyRaw.value))
 
-/* 상단 차트들 */
+/* 차트 데이터 */
 const topPkgData = computed(() => {
   const cutoff = addDays(new Date(), -pkgRangeDays.value); const map = {}
   for (const r of reservations.value) {
@@ -265,13 +291,15 @@ const revenueChart = computed(() => safeChart(
   { chart:{toolbar:{show:false}}, colors:['#6ea8fe'],
     plotOptions:{bar:{columnWidth:'40%', borderRadius:6}},
     xaxis:{ categories:rangeDateLabels.value, tickAmount:rangeDateLabels.value.length, tickPlacement:'between',
-      labels:{ rotate:0, trim:false, hideOverlappingLabels:false, formatter:edgeLabel, style:{colors:'#94a3b8'} },
+      labels:{ rotate:0, trim:false, hideOverlappingLabels:false, formatter:(val,_ts,th)=> {
+        const labels = (th && typeof th==='object' && th.w?.globals?.labels) ? th.w.globals.labels : rangeDateLabels.value
+        const idx = (th && typeof th==='object' && typeof th.i==='number') ? th.i : labels.indexOf(val)
+        const last = Math.max(0, labels.length-1); return (idx===0 || idx===last) ? val : ''
+      }, style:{colors:'#94a3b8'} },
       axisTicks:{show:false}, axisBorder:{show:false} },
     yaxis:{ labels:{ formatter:(v)=>n(Math.round(v)) } }, dataLabels:{enabled:false},
     grid:{ strokeDashArray:4, borderColor:'#edf1f7' }, tooltip:{ y:{ formatter:(v)=>n(Math.round(v))+' 원' } } }
 ))
-
-/* 수입 vs 지출 */
 const incomeExpenseChart = computed(() => safeChart(
   [
     { name:'수입', data: rangeDateLabels.value.map(d=>revenueDailyRaw.value[d]||0) },
@@ -280,12 +308,17 @@ const incomeExpenseChart = computed(() => safeChart(
   { chart:{toolbar:{show:false}}, colors:['#60d0a8','#f78fb3'],
     stroke:{width:3, curve:'smooth'}, markers:{size:0},
     xaxis:{ categories:rangeDateLabels.value, tickAmount:rangeDateLabels.value.length,
-      labels:{ rotate:0, trim:false, hideOverlappingLabels:false, formatter:edgeLabel, style:{colors:'#94a3b8'} },
+      labels:{ rotate:0, trim:false, hideOverlappingLabels:false, formatter:(val,_ts,th)=> {
+        const labels = (th && typeof th==='object' && th.w?.globals?.labels) ? th.w.globals.labels : rangeDateLabels.value
+        const idx = (th && typeof th==='object' && typeof th.i==='number') ? th.i : labels.indexOf(val)
+        const last = Math.max(0, labels.length-1); return (idx===0 || idx===last) ? val : ''
+      }, style:{colors:'#94a3b8'} },
       axisTicks:{show:false}, axisBorder:{show:false} },
     yaxis:{ labels:{ formatter:(v)=>n(Math.round(v)) } }, dataLabels:{enabled:false},
     grid:{ strokeDashArray:4, borderColor:'#edf1f7' }, tooltip:{ y:{ formatter:(v)=>n(Math.round(v))+' 원' } } }
 ))
 </script>
+
 
 <style>
 /* 공통 레이아웃/스타일 (자식에서도 사용될 클래스를 전역으로 둠) */
