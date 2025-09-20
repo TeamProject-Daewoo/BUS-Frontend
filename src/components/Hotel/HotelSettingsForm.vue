@@ -15,7 +15,7 @@
         <button class="btn green" :disabled="saving.basic" @click="saveBasic">
           {{ saving.basic ? '저장중...' : '저장' }}
         </button>
-        <span class="dim" v-if="basic.contentid">contentid: {{ basic.contentid }}</span>
+        <span class="dim" v-if="basic.contentid">호텔ID : {{ basic.contentid }}</span>
       </div>
     </div>
     <div v-else class="card">기본 정보 불러오는 중…</div>
@@ -48,7 +48,7 @@
         <button class="btn green" :disabled="saving.intro" @click="saveIntro">
           {{ saving.intro ? '저장중...' : '저장' }}
         </button>
-        <span class="dim" v-if="intro.contentid">contentid: {{ intro.contentid }}</span>
+        <span class="dim" v-if="intro.contentid">호텔ID : {{ intro.contentid }}</span>
       </div>
     </div>
     <div v-else class="card">소개/부대시설 불러오는 중…</div>

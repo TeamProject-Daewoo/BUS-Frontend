@@ -33,7 +33,7 @@
           {{ h.title || '(제목 없음)' }}
         </div>
         <div class="addr">{{ h.addr1 || '-' }}</div>
-        <div class="cid">contentid: {{ h.contentid }}</div>
+        <div class="cid">호텔ID : {{ h.contentid }}</div>
 
         <div class="actions">
           <!-- 수정으로 이동 (카드 클릭 이벤트 버블링 방지) -->
