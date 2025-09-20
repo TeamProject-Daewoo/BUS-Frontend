@@ -15,24 +15,10 @@ const route = useRoute()
 const layout = computed(() => route.meta.layout || 'DefaultLayout')
 
 onMounted(async () => {
-  // 1) 로컬스토리지에 있는 accessToken 복원 + roles 파싱
-  if (!authStore.isInitialized) {
-    authStore.init()
-  }
 
-  // 2) accessToken이 없으면 "조용히" 자동 로그인 시도(쿠키 refreshToken 필요)
-  if (!authStore.accessToken) {
-    try {
-      const { data } = await api.post('/api/auth/refresh')
-      if (data?.accessToken) {
-        authStore.setToken(data.accessToken)
-        console.log('[App] 토큰 재발급 성공')
-      }
-    } catch {
-      console.log('[App] 자동 로그인 실패(유효 refreshToken 없음)')
-    }
-  }
-})
+  // Access Token이 스토어에 없는 경우에만 재발급을 시도합니다.
+ authStore.initialize();
+});
 </script>
 
 <template>
