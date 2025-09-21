@@ -45,5 +45,5 @@ const items = computed(() => {
 
 <style scoped>
 .panel.tall{ display:flex; flex-direction:column; min-height:430px; }
-.scroll{ overflow:auto; max-height:260px; padding-right:6px; flex:1; }
+.scroll{ overflow:auto; max-height:350px; padding-right:6px; flex:1; }
 </style>

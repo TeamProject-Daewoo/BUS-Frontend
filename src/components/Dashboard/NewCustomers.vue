@@ -178,7 +178,7 @@ defineExpose({ PAGE_SIZE })
 
 <style scoped>
 /* 패널 내 리스트 */
-.scroll { overflow: auto; max-height: 260px; padding-right: 6px; flex: 1; }
+.scroll { overflow: auto; max-height: 350px; padding-right: 6px; flex: 1; }
 .linklike { background: none; border: none; padding: 0; cursor: pointer; text-decoration: underline; }
 
 /* 고객 리스트 비주얼 */

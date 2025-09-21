@@ -1,24 +1,24 @@
 import { defineStore } from 'pinia';
-import api from '@/api/axios'; // axios 인스턴스 임포트
+import api from '@/api/axios';
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
     accessToken: null,
-    loggedInUser: null, // 사용자 ID (예: 'user123')
-    userName: null,     // 사용자 이름 (예: '홍길동')
+    loggedInUser: null,
+    userName: null,
     isInitialized: false,
   }),
 
   getters: {
     isLoggedIn: (state) => !!state.accessToken,
   },
-  
+
   actions: {
     setToken(token) {
       this.accessToken = token;
+      localStorage.setItem('accessToken', token); // ✅ 저장
       const payload = this.parseJwt(token);
-      
-      // 토큰을 파싱하여 ID와 이름을 각각의 상태에 저장
+
       this.loggedInUser = payload?.sub || null;
       this.userName = payload?.name || null;
     },
@@ -27,40 +27,48 @@ export const useAuthStore = defineStore('auth', {
       this.accessToken = null;
       this.loggedInUser = null;
       this.userName = null;
+      localStorage.removeItem('accessToken'); // ✅ 삭제
     },
 
     setInitialized() {
       this.isInitialized = true;
     },
 
-    // JWT 페이로드를 안전하게 디코딩하는 헬퍼 함수
     parseJwt(token) {
-      if (!token) { return null; }
+      if (!token) return null;
       try {
         const base64Url = token.split('.')[1];
         const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
         const jsonPayload = decodeURIComponent(
-          atob(base64).split('').map(c => 
+          atob(base64).split('').map(c =>
             '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
           ).join('')
         );
         return JSON.parse(jsonPayload);
-      } catch (e) {
+      } catch {
         return null;
       }
     },
-    
-    // 앱 시작 시 실행될 자동 로그인 액션
+
     async initialize() {
       this.isInitialized = false;
+
       try {
+        // ✅ localStorage 먼저 확인
+        const stored = localStorage.getItem('accessToken');
+        if (stored) {
+          this.setToken(stored);
+          console.log('localStorage 토큰 복원 성공');
+          this.isInitialized = true;
+          return;
+        }
+
+        // ✅ 없으면 refresh 시도
         const response = await api.post('/api/auth/refresh');
-        // 👇 재발급받은 토큰으로 setToken을 호출하여 모든 상태를 한번에 업데이트
         this.setToken(response.data.accessToken);
-        console.log(response.data.accessToken)
-        console.log('자동 로그인 성공 (토큰 및 사용자 정보 업데이트 완료)');
+        console.log('refresh 성공, 토큰 재발급');
       } catch (error) {
-        console.log('자동 로그인 실패. 유효한 리프레시 토큰이 없습니다.');
+        console.log('자동 로그인 실패', error);
         this.logout();
       } finally {
         this.isInitialized = true;
