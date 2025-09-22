@@ -11,6 +11,14 @@
         </div>
       </div>
 
+      <!-- 객실 수 -->
+      <div class="form-row">
+        <div class="form-label">객실 수</div>
+        <div class="form-input">
+          <input type="number" v-model="room.roomcount" min="1" placeholder="예: 10" />
+        </div>
+      </div>
+
       <!-- 기준인원 -->
       <div class="form-row">
         <div class="form-label">기준 인원</div>
@@ -86,15 +94,31 @@
         </div>
       </div>
 
-      <!-- 객실 이미지 -->
+      <!-- 이미지 업로드 (최대 5장) -->
       <div class="form-row">
-        <div class="form-label">대표 이미지</div>
+        <div class="form-label">객실 이미지</div>
         <div class="form-input">
-          <input type="file" @change="onFileChange($event, room, 'roomimg1')" />
-          <div class="preview">
-            <img v-if="room.roomimg1" :src="room.roomimg1" alt="이미지 미리보기" />
-            <span v-else class="placeholder">이미지 없음</span>
+          <input type="file" accept="image/*" multiple @change="onFilesChange($event, room)" />
+
+          <!-- 미리보기 -->
+          <div class="preview-list">
+            <div
+              v-for="(img, idx) in room.previewImages"
+              :key="idx"
+              class="preview-box"
+            >
+              <img :src="img" alt="이미지 미리보기" />
+            </div>
+
+            <!-- 이미지가 없을 때 -->
+            <div v-if="room.previewImages.length === 0" class="placeholder big">
+              아직 업로드된 이미지가 없습니다.
+            </div>
           </div>
+          <!-- 파일명 리스트 -->
+<ul class="file-names">
+  <li v-for="(file, idx) in room.files" :key="idx">{{ file.name }}</li>
+</ul>
         </div>
       </div>
     </div>
@@ -116,9 +140,11 @@
 const props = defineProps({ rooms: Array })
 const emits = defineEmits(['next', 'prev'])
 
+// 객실 추가
 function addRoom() {
   props.rooms.push({
     roomtitle: '',
+    roomcount: 0,       // ✅ 총 객실 수
     roombasecount: 0,
     roommaxcount: 0,
     roomsize1: '',
@@ -134,15 +160,30 @@ function addRoom() {
     roomrefrigerator: 'N',
     roomsofa: 'N',
     roomtable: 'N',
-    roomimg1: ''
+    files: [],          // 실제 선택된 파일
+    previewImages: [],  // blob URL (미리보기용)
+    images: []          // 업로드된 S3 URL
   })
 }
 
-// 파일 업로드 미리보기
-function onFileChange(e, room, key) {
-  const file = e.target.files[0]
-  if (!file) return
-  room[key] = URL.createObjectURL(file)
+// 여러 파일 선택 (업로드 X, 보관만)
+function onFilesChange(e, room) {
+  const files = Array.from(e.target.files)
+  if (!files.length) return
+
+  // 최대 5장 제한
+  const selected = files.slice(0, 5 - room.files.length)
+
+  for (const file of selected) {
+    room.files.push(file)
+
+    // 미리보기용 blob URL 생성
+    const blobUrl = URL.createObjectURL(file)
+    room.previewImages.push(blobUrl)
+  }
+
+  // 파일 input 초기화 (같은 파일 다시 선택 가능)
+  e.target.value = ''
 }
 </script>
 
@@ -192,6 +233,9 @@ function onFileChange(e, room, key) {
   flex: 1;
   padding: 12px;
 }
+.form-input input[type="file"] {
+  margin-bottom: 8px;
+}
 .form-input input {
   width: 100%;
   box-sizing: border-box;
@@ -205,10 +249,17 @@ function onFileChange(e, room, key) {
   flex-wrap: wrap;
   gap: 12px;
 }
-.preview {
+
+/* 이미지 미리보기 리스트 */
+.preview-list {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
   margin-top: 8px;
-  width: 260px;
-  height: 180px;
+}
+.preview-box {
+  width: 120px;
+  height: 90px;
   border: 1px dashed #d1d5db;
   border-radius: 6px;
   display: flex;
@@ -216,13 +267,17 @@ function onFileChange(e, room, key) {
   justify-content: center;
   background: #fafafa;
 }
-.preview img {
+.preview-box img {
   max-width: 100%;
   max-height: 100%;
   object-fit: contain;
 }
-.placeholder {
-  font-size: 13px;
+.placeholder.big {
+  width: 100%;
+  padding: 30px;
+  border: 1px dashed #d1d5db;
+  border-radius: 6px;
+  text-align: center;
   color: #9ca3af;
 }
 
@@ -281,4 +336,14 @@ function onFileChange(e, room, key) {
 .btn.ghost:hover {
   background: #e5e7eb;
 }
+.file-names {
+  margin-top: 8px;
+  font-size: 13px;
+  color: #374151;
+}
+.file-names li {
+  list-style: disc;
+  margin-left: 20px;
+}
+
 </style>

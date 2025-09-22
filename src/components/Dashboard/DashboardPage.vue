@@ -184,25 +184,30 @@ const thisWeekBookings = computed(() => {
   return reservations.value.filter(r => set.has(dOnly(r.checkInDate)) && !isCanceled(r.status)).length
 })
 
-const roomsTotal = computed(() => rooms.value.length)
+// 전체 객실 수
+const roomsTotal = computed(() => 
+  rooms.value.reduce((sum, r) => sum + (r.roomcount ?? 0), 0)
+)
+
+// 이용 중 객실
 const activeToday = computed(() => {
   const t = rangeDateLabels.value[rangeDateLabels.value.length-1]
-  const set = new Set()
+  let count = 0
   for (const r of reservations.value) {
     if (isCanceled(r.status)) continue
     const inOk = dOnly(r.checkInDate) <= t
     const outOk = dOnly(r.checkOutDate) > t
     if (inOk && outOk) {
-      const base = r.roomcode || `unknown_${r.reservationId}`
-      // 전체 모드에서도 호텔별 유니크 보장
-      const key = (r._hid ? `${r._hid}|` : '') + base
-      set.add(key)
+      count += (r.roomcount ?? 1) // 예약에서 실제 몇 실이 사용됐는지
     }
   }
-  return set.size
+  return count
 })
-const roomsAvailable = computed(() => Math.max(roomsTotal.value - activeToday.value, 0))
 
+// 이용 가능 객실
+const roomsAvailable = computed(() => 
+  Math.max(roomsTotal.value - activeToday.value, 0)
+)
 /* 매출/지출/순이익 */
 const revenueDailyRaw = computed(() => {
   const map = Object.fromEntries(rangeDateLabels.value.map(d => [d,0]))
