@@ -192,16 +192,16 @@ function toUiRow(x) {
   const status = (x.status || '').toUpperCase()
   let statusType = 'active'
   let statusLabel = '확정'
-  if (status === 'CANCEL') { statusType = 'cancel'; statusLabel = '취소' }
+  if (status === 'CANCELLED') { statusType = 'cancel'; statusLabel = '취소' }
   else if (status === 'PENDING') { statusType = 'pending'; statusLabel = '대기' }
-  else if (status === 'DONE') { statusType = 'active'; statusLabel = '확정' }
+  else if (status === 'DONE' || status === 'PAID') { statusType = 'active'; statusLabel = '확정' }
 
   const paymentStatus = (x.paymentStatus || '').toUpperCase()
   let paymentType = 'none'
   let paymentLabel = '—'
-  if (paymentStatus === 'PAID') { paymentType = 'paid'; paymentLabel = '결제완료' }
+  if (paymentStatus === 'PAID' || paymentStatus === 'DONE') { paymentType = 'paid'; paymentLabel = '결제완료' }
   else if (paymentStatus === 'DUE') { paymentType = 'due'; paymentLabel = '미결제' }
-  else if (['REFUND', 'REFUNDED'].includes(paymentStatus)) { paymentType = 'refund'; paymentLabel = '환불' }
+  else if (paymentStatus === 'CANCELED') { paymentType = 'refund'; paymentLabel = '환불' }
 
   return {
     reservationId: x.reservationId,
