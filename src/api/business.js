@@ -62,3 +62,13 @@ export const getPayments = (contentid) =>
 export const bulkReservations = (contentid, ids, action) =>
   api.post(`/business/reservations/bulk${q(contentid)}`, { ids, action })
 
+// presigned URL 발급
+export const getPresignedUrl = (filename, contentType) =>
+  api.get('/business/s3/presign', { params: { filename, contentType } })
+
+// 파일 업로드
+export const uploadFileToS3 = (url, file, contentType) =>
+  api.put(url, file, {
+    headers: { 'Content-Type': contentType },
+    baseURL: '' // ✅ presigned URL은 절대 경로라 baseURL 무시
+  })

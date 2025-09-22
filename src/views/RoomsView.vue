@@ -50,10 +50,24 @@
           </div>
 
           <div class="actions">
-            <!-- 객실 수 표시 -->
-            <div class="room-count">객실 수 : {{ r.roomcount > 0 ? r.roomcount + '실' : '0실' }}</div> <!-- 객실 수 표시 추가 -->
-            <button class="btn-outline" @click="edit(r)">수정</button>
-            <button class="btn-danger" @click="remove(r.id)">삭제</button>
+            <!-- 객실 수 -->
+            <div class="room-count-wrapper">
+              <span class="room-count">객실 수 : {{ r.roomcount > 0 ? r.roomcount + '실' : '0실' }}</span>
+              <div class="counter-buttons">
+                <button class="arrow-btn up" @click="adjustRoomCount(r, 1)">▲</button>
+                <button
+                  class="arrow-btn down"
+                  @click="adjustRoomCount(r, -1)"
+                  :disabled="r.roomcount <= 0"
+                >▼</button>
+              </div>
+            </div>
+
+            <!-- 버튼 묶음 -->
+            <div class="action-buttons">
+              <button class="btn-outline" @click="edit(r)">수정</button>
+              <button class="btn-danger" @click="remove(r.id)">삭제</button>
+            </div>
           </div>
         </div>
       </div>
@@ -141,6 +155,23 @@ watch(() => store.selectedContentId, loadOnMount)
 async function loadOnMount() {
   if (!store.selectedContentId) { rooms.value = [] } 
   else await load()
+}
+
+async function adjustRoomCount(r, delta) {
+  const newValue = (r.roomcount || 0) + delta
+  if (newValue < 0) return
+
+  try {
+    // 프론트 값 먼저 변경
+    r.roomcount = newValue
+
+    // DB 업데이트 API 호출
+    await updateRoomApi(r.id, { roomcount: newValue }, store.selectedContentId)
+    console.log('roomcount 업데이트 성공:', newValue)
+  } catch (e) {
+    console.error('roomcount 업데이트 실패', e)
+    alert('객실 수 업데이트 실패')
+  }
 }
 
 async function load() {
@@ -236,22 +267,6 @@ function thumbs(r) {
 // 이미지 오류: https 강제 후보들 → 프록시 → 플레이스홀더
 function onImgError(e, r) {
   const el = e.target
-  const tried = new Set((el.getAttribute('data-tried') || '').split('|').filter(Boolean))
-
-  const httpsCandidates = candidateImages(r).map(safeUrl).filter(u => !tried.has(u))
-  if (httpsCandidates.length) {
-    const next = httpsCandidates[0]
-    tried.add(next); el.setAttribute('data-tried', [...tried].join('|')); el.src = next
-    return
-  }
-
-  const proxyCandidates = candidateImages(r).map(viaProxy).filter(u => !tried.has(u))
-  if (proxyCandidates.length) {
-    const next = proxyCandidates[0]
-    tried.add(next); el.setAttribute('data-tried', [...tried].join('|')); el.src = next
-    return
-  }
-
   el.src = placeholderImg(r.roomtitle)
 }
 
@@ -319,6 +334,7 @@ function amenitiesOf(r){
   return AMENITIES.filter(a => isOn(r[a.key]))
 }
 </script>
+
 <style scoped>
 /* 공통 */
 .toolbar { display: flex; justify-content: flex-end; margin: 12px 0; gap: 8px; }
@@ -330,10 +346,10 @@ function amenitiesOf(r){
   background: #22c55e;
   color: #fff;
   border: none;
-  padding: 12px 16px; /* 기존 padding보다 크게 설정 */
+  padding: 12px 16px;
   border-radius: 8px;
   transition: .18s;
-  font-size: 16px; /* 버튼 텍스트 크기 조금 늘리기 */
+  font-size: 16px;
 }
 
 .btn:hover {
@@ -397,42 +413,79 @@ function amenitiesOf(r){
 .amenities .dim { color: #9ca3af; background: #fff; border-style: dashed; }
 
 .actions {
-  display: flex; gap: 8px; padding: 12px; margin-top: auto;
-  border-top: 1px solid #eef2f7; background: #fafafa;
-  justify-content: flex-end;
-}
-
-/* 수정 및 삭제 버튼 스타일 */
-.actions {
   display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 8px;
   padding: 12px;
   margin-top: auto;
   border-top: 1px solid #eef2f7;
   background: #fafafa;
-  justify-content: flex-end;
 }
 
-/* 수정 버튼 */
+.room-count-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.counter-buttons {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-left: 6px;
+}
+
+.arrow-btn {
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  width: 24px;
+  height: 24px;
+  font-size: 12px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+.arrow-btn:hover { background: #e5e7eb; }
+.arrow-btn:disabled {
+  background: #e5e7eb;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+.arrow-btn + .arrow-btn { margin-top: 4px; }
+.arrow-btn.up {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.arrow-btn.down {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 8px;
+}
+
 .btn-outline {
-  border: 1px solid #4CAF50; /* 초록색 테두리 */
+  border: 1px solid #4CAF50;
   background: #fff;
   padding: 8px 16px;
   border-radius: 8px;
-  color: #4CAF50; /* 초록색 글씨 */
+  color: #4CAF50;
   font-size: 14px;
   font-weight: 600;
   transition: background-color 0.3s ease;
 }
-
 .btn-outline:hover {
-  background-color: #4CAF50; /* 초록색 배경 */
+  background-color: #4CAF50;
   color: white;
 }
 
-/* 삭제 버튼 */
 .btn-danger {
-  background: #f44336; /* 빨간색 배경 */
+  background: #f44336;
   color: white;
   border: none;
   padding: 8px 16px;
@@ -441,16 +494,15 @@ function amenitiesOf(r){
   font-weight: 600;
   transition: background-color 0.3s ease;
 }
-
 .btn-danger:hover {
-  background-color: #d32f2f; /* 진한 빨간색 배경 */
+  background-color: #d32f2f;
 }
 
-/* 객실 수 표시 스타일 */
 .room-count {
   font-size: 14px;
   color: #555;
   font-weight: bold;
-  margin-right: 135px;
+  display: inline-block;
+  margin: 0;
 }
 </style>

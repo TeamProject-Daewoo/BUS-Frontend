@@ -9,10 +9,9 @@
         <select v-model="selected" @change="onChange">
           <option value="" disabled>호텔을 선택하세요</option>
           <option v-for="h in store.hotels" :key="h.contentid" :value="h.contentid">
-            {{ h.title || h.contentid}}
+            {{ h.title || h.contentid }}
           </option>
         </select>
-        <!-- (삭제됨) <RouterLink to="/hotels" class="choose-link">목록…</RouterLink> -->
       </div>
     </div>
 
@@ -39,7 +38,10 @@ onMounted(async () => {
   }
   selected.value = store.selectedContentId
 })
-watch(() => store.selectedContentId, (v) => { selected.value = v })
+
+watch(() => store.selectedContentId, (v) => {
+  selected.value = v
+})
 
 function onChange() {
   store.setSelected(selected.value)
@@ -55,21 +57,68 @@ function onChange() {
   display: flex;
   flex-direction: column;
   flex: 0 0 270px;
-  writing-mode: horizontal-tb;
-  text-orientation: mixed;
 }
-.sidebar .nav-item { display:block; writing-mode: horizontal-tb; white-space:nowrap; }
-.sidebar-header { padding: 16px 16px 12px; border-bottom: 1px solid var(--border-color, #e5e7eb); }
-.sidebar-header h1 { margin: 0 0 8px; font-size: 18px; color: var(--text-primary, #111827); }
-.sidebar-nav { display: flex; flex-direction: column; padding: 12px; }
-.nav-item {
-  padding: 10px 12px; text-decoration: none; color: var(--text-secondary, #374151);
-  border-radius: 8px; font-weight: 500; transition: all 0.2s ease;
-}
-.nav-item:hover { background-color: var(--background-color, #f9fafb); color: var(--primary-color, #16a34a); }
-.nav-item.router-link-exact-active { background-color:#e9f7ef; color:#16a34a; font-weight:600; }
 
-.hotel-select { display:flex; gap:8px; align-items:center; }
-.hotel-select select { flex:1; padding:8px; border:1px solid #e5e7eb; border-radius:8px; background:#fff; font-size:13px; }
-/* .choose-link 스타일은 제거해도 됨 */
+.sidebar-header {
+  padding: 20px 16px 16px;
+  border-bottom: 1px solid var(--border-color, #e5e7eb);
+}
+
+.sidebar-header h1 {
+  margin: 0 0 12px;
+  font-size: 22px;   /* ✅ 크게 */
+  font-weight: 700;
+  color: var(--text-primary, #111827);
+}
+
+.hotel-select {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.hotel-select select {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 10px; /* ✅ 둥글게 */
+  background: #fff;
+  font-size: 14px;     /* ✅ 크기 키움 */
+  font-weight: 500;
+  color: #374151;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05); /* ✅ 그림자 */
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.hotel-select select:focus {
+  outline: none;
+  border-color: #16a34a; /* ✅ 초록색 강조 */
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.2);
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+}
+
+.nav-item {
+  padding: 10px 12px;
+  text-decoration: none;
+  color: var(--text-secondary, #374151);
+  border-radius: 8px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.nav-item:hover {
+  background-color: var(--background-color, #f9fafb);
+  color: var(--primary-color, #16a34a);
+}
+
+.nav-item.router-link-exact-active {
+  background-color: #e9f7ef;
+  color: #16a34a;
+  font-weight: 600;
+}
 </style>
