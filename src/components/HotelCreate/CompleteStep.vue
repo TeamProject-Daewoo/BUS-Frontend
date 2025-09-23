@@ -46,7 +46,7 @@ async function submitAll() {
   try {
     const hotel = { ...props.hotel }
     const intro = { ...props.intro }
-    const rooms = JSON.parse(JSON.stringify(props.rooms))
+    const rooms = props.rooms.map(room => ({ ...room }))
 
     // ✅ 호텔 대표 이미지 업로드
     if (hotel.file instanceof File) {
