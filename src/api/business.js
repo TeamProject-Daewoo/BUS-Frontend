@@ -1,24 +1,26 @@
 // src/api/business.js
-import api from './axios'
+import api from './axios'   // ✅ JWT 붙는 axios 인스턴스
 
 const q = (contentid) =>
   contentid ? `?contentid=${encodeURIComponent(contentid)}` : ''
 
+// ====================== 예약/결제 ======================
+
 // 예약 상태 업데이트
 export function updateReservationStatus(id, status) {
   return api.put(`/business/reservations/${id}/status`, null, {
-    params: { status }
+    params: { status },
   })
 }
 
 // 결제 상태 업데이트
 export function updatePaymentStatus(id, status) {
   return api.put(`/business/payments/${id}/status`, null, {
-    params: { status }
+    params: { status },
   })
 }
 
-// ✅ 통합 업데이트 (체크인/아웃, 인원, 예약상태, 결제상태 한 번에)
+// ✅ 예약 전체 업데이트
 export const updateReservation = (payload) =>
   api.put(`/business/reservations/${payload.reservationId}`, payload)
 
@@ -27,10 +29,24 @@ export function deleteReservationApi(id) {
   return api.delete(`/business/reservations/${id}`)
 }
 
-// 호텔 목록(내가 운영하는 호텔들)
+// 예약 목록
+export const getReservations = (contentid) =>
+  api.get(`/business/reservations${q(contentid)}`)
+
+// 결제 목록
+export const getPayments = (contentid) =>
+  api.get(`/business/payments${q(contentid)}`)
+
+// ✅ 예약 일괄 작업
+export const bulkReservations = (contentid, ids, action) =>
+  api.post(`/business/reservations/bulk${q(contentid)}`, { ids, action })
+
+// ====================== 호텔 ======================
+
+// 내 호텔 목록
 export const listMyHotels = () => api.get('/business/hotels')
 
-// 호텔 기본
+// 호텔 기본 정보
 export const getHotel = (contentid) =>
   api.get(`/business/hotel${q(contentid)}`)
 export const updateHotel = (payload, contentid) =>
@@ -52,27 +68,10 @@ export const updateRoomApi = (id, room, contentid) =>
 export const deleteRoomApi = (id, contentid) =>
   api.delete(`/business/rooms/${id}${q(contentid)}`)
 
-// 예약/결제
-export const getReservations = (contentid) =>
-  api.get(`/business/reservations${q(contentid)}`)
-export const getPayments = (contentid) =>
-  api.get(`/business/payments${q(contentid)}`)
+// 호텔 등록 (호텔 + 인트로 + 객실 한번에)
+export const registerHotel = (payload) =>
+  api.post('/business/hotel/register', payload)
 
-// ✅ 예약 일괄 작업
-export const bulkReservations = (contentid, ids, action) =>
-  api.post(`/business/reservations/bulk${q(contentid)}`, { ids, action })
-
-// presigned URL 발급
-export const getPresignedUrl = (filename, contentType) =>
-  api.get('/business/s3/presign', { params: { filename, contentType } })
-
-// 파일 업로드
-export const uploadFileToS3 = (url, file, contentType) =>
-  api.put(url, file, {
-    headers: { 'Content-Type': contentType },
-    baseURL: '' // ✅ presigned URL은 절대 경로라 baseURL 무시
-  })
-
-  //특별가 목록 가져오기
+// 특별가 목록 가져오기
 export const getPriceOverrides = (contentid) =>
-  api.get(`/business/prices/list${q(contentid)}`);
+  api.get(`/business/prices/list${q(contentid)}`)

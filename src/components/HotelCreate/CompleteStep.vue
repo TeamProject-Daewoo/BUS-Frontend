@@ -10,7 +10,7 @@
       </p>
     </div>
 
-    <!-- 요약 박스 (핵심 정보만) -->
+    <!-- 요약 박스 -->
     <div class="summary">
       <ul>
         <li><strong>호텔명:</strong> {{ hotel.title }}</li>
@@ -21,21 +21,70 @@
 
     <!-- 버튼 -->
     <div class="actions">
-      <button class="btn ghost" @click="$emit('prev')">이전</button>
-      <button class="btn" @click="submitAll">등록하기</button>
+      <button class="btn ghost" @click="$emit('prev')" :disabled="submitting">이전</button>
+      <button class="btn" @click="submitAll" :disabled="submitting">
+        {{ submitting ? '등록 중...' : '등록하기' }}
+      </button>
     </div>
   </div>
 </template>
 
 <script setup>
+import { ref } from 'vue'
+import { uploadToS3 } from '@/utils/s3Uploader'
+import { registerHotel } from '@/api/business'
+
 const props = defineProps({ hotel: Object, intro: Object, rooms: Array })
 const emits = defineEmits(['prev'])
 
+const submitting = ref(false)
+
 async function submitAll() {
-  console.log('[HOTEL]', props.hotel)
-  console.log('[INTRO]', props.intro)
-  console.log('[ROOMS]', props.rooms)
-  alert('등록 API 연동 필요 (콘솔 확인)')
+  if (submitting.value) return
+  submitting.value = true
+
+  try {
+    const hotel = { ...props.hotel }
+    const intro = { ...props.intro }
+    const rooms = JSON.parse(JSON.stringify(props.rooms))
+
+    // ✅ 호텔 대표 이미지 업로드
+    if (hotel.file instanceof File) {
+      hotel.firstimage = await uploadToS3(hotel.file)
+    }
+    delete hotel.file
+    delete hotel.previewUrl
+
+    // ✅ 객실 이미지 업로드
+    for (const room of rooms) {
+      if (Array.isArray(room.files) && room.files.length > 0) {
+        const uploadedUrls = await Promise.all(
+          room.files.slice(0, 5).map(file => uploadToS3(file))
+        )
+        uploadedUrls.forEach((url, i) => {
+          room[`roomimg${i + 1}`] = url
+        })
+      }
+      delete room.files
+      delete room.previewImages
+      delete room.images
+    }
+
+    // ✅ 최종 payload
+    const payload = { hotel, intro, rooms }
+    console.log('[REGISTER PAYLOAD]', payload)
+
+    const res = await registerHotel(payload)
+    console.log('[REGISTER SUCCESS]', res.data)
+
+    alert('등록이 완료되었습니다!')
+  } catch (err) {
+    console.error('[REGISTER FAIL]', err)
+    const msg = err.response?.data || err.message || '알 수 없는 오류'
+    alert(`등록 중 오류 발생: ${msg}`)
+  } finally {
+    submitting.value = false
+  }
 }
 </script>
 
@@ -50,14 +99,10 @@ async function submitAll() {
   text-align: center;
   animation: fadeInUp 0.5s ease;
 }
-
-/* 애니메이션 */
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
 }
-
-/* 상단 아이콘 + 타이틀 */
 .header {
   display: flex;
   flex-direction: column;
@@ -88,8 +133,6 @@ async function submitAll() {
   color: #6b7280;
   line-height: 1.6;
 }
-
-/* 요약 박스 */
 .summary {
   text-align: left;
   background: #f9fafb;
@@ -97,11 +140,6 @@ async function submitAll() {
   border-radius: 10px;
   padding: 20px;
   margin-bottom: 32px;
-}
-.summary ul {
-  list-style: none;
-  padding: 0;
-  margin: 0;
 }
 .summary li {
   margin-bottom: 10px;
@@ -111,8 +149,6 @@ async function submitAll() {
 .summary strong {
   color: #111827;
 }
-
-/* 버튼 */
 .actions {
   display: flex;
   justify-content: flex-end;
@@ -128,14 +164,11 @@ async function submitAll() {
   cursor: pointer;
   transition: background 0.2s;
 }
-.btn:hover {
-  background: #1d4ed8;
-}
+.btn:hover { background: #1d4ed8; }
+.btn:disabled { opacity: 0.6; cursor: not-allowed; }
 .btn.ghost {
   background: #f3f4f6;
   color: #374151;
 }
-.btn.ghost:hover {
-  background: #e5e7eb;
-}
+.btn.ghost:hover { background: #e5e7eb; }
 </style>

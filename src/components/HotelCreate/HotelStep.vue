@@ -207,9 +207,13 @@ const areaCodeMap = {
 function onFileChange(e) {
   const file = e.target.files[0]
   if (!file) return
+  if (props.hotel.previewUrl) {
+    URL.revokeObjectURL(props.hotel.previewUrl) // 기존 blob 해제
+  }
   props.hotel.file = file
   props.hotel.previewUrl = URL.createObjectURL(file)
 }
+
 
 async function openPostcode() {
   await loadKakaoSdk()

@@ -144,9 +144,9 @@ const emits = defineEmits(['next', 'prev'])
 function addRoom() {
   props.rooms.push({
     roomtitle: '',
-    roomcount: 0,       // ✅ 총 객실 수
-    roombasecount: 0,
-    roommaxcount: 0,
+    roomcount: 1,
+    roombasecount: 2,
+    roommaxcount: 2,
     roomsize1: '',
     roomoffseasonminfee1: 0,
     roomoffseasonminfee2: 0,
@@ -160,13 +160,13 @@ function addRoom() {
     roomrefrigerator: 'N',
     roomsofa: 'N',
     roomtable: 'N',
-    files: [],          // 실제 선택된 파일
-    previewImages: [],  // blob URL (미리보기용)
-    images: []          // 업로드된 S3 URL
+    files: [],          // 실제 선택된 File 객체
+    previewImages: [],  // 미리보기 blob URL
+    images: []          // 업로드 후 S3 URL
   })
 }
 
-// 여러 파일 선택 (업로드 X, 보관만)
+// 여러 파일 선택
 function onFilesChange(e, room) {
   const files = Array.from(e.target.files)
   if (!files.length) return
@@ -177,15 +177,15 @@ function onFilesChange(e, room) {
   for (const file of selected) {
     room.files.push(file)
 
-    // 미리보기용 blob URL 생성
+    // 미리보기용 blob URL
     const blobUrl = URL.createObjectURL(file)
     room.previewImages.push(blobUrl)
   }
 
-  // 파일 input 초기화 (같은 파일 다시 선택 가능)
-  e.target.value = ''
+  e.target.value = '' // 같은 파일 다시 선택 가능하게 초기화
 }
 </script>
+
 
 <style scoped>
 .card {
