@@ -151,7 +151,15 @@ async function savePriceOverrides() {
 
   } catch (error) {
     console.error('특별가 저장 실패:', error);
-    alert('저장 중 오류가 발생했습니다.');
+
+    // Axios 에러에 서버 응답(response)이 있는지 확인
+    if (error.response) {
+      // 서버가 보낸 에러 메시지(예: "선택하신 기간에 이미...")를 alert으로 표시
+      alert("선택하신 기간에 이미 다른 특별가가 설정되어 있습니다"); 
+    } else {
+      // 서버 응답 없이 네트워크 에러 등이 발생한 경우
+      alert('저장 중 오류가 발생했습니다.');
+    }
   }
 };
 
