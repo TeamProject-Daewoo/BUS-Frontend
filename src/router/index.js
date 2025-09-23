@@ -9,6 +9,7 @@ import RoomsView from '@/views/RoomsView.vue'
 import SettingsView from '@/views/SettingsView.vue'
 import HotelsSelectView from '@/views/HotelsSelectView.vue'
 import HotelCreateView from '@/views/HotelCreateView.vue'
+import SpecialPriceEditor from '@/views/SpecialPriceEditor.vue'
 import { watch } from 'vue'
 
 import { useAuthStore } from '@/api/auth'
@@ -27,6 +28,7 @@ const routes = [
   { path: '/settings',              name: 'settings-list',   component: HotelsSelectView, meta: { requiresAuth: true } },
   { path: '/settings/new',          name: 'settings-create', component: HotelCreateView,  meta: { requiresAuth: true } },
   { path: '/settings/:contentid',   name: 'settings-edit',   component: SettingsView,     props: true, meta: { requiresAuth: true } },
+  { path: '/setprice',   name: 'SpecialPriceEditor',   component: SpecialPriceEditor,     props: true, meta: { requiresAuth: true } },
 
   { path: '/mypage',      name: 'mypage',          component: MypageView },
 ]

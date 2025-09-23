@@ -20,6 +20,7 @@
       <RouterLink to="/reservations" class="nav-item">예약 관리</RouterLink>
       <RouterLink to="/rooms" class="nav-item">객실 관리</RouterLink>
       <RouterLink to="/settings" class="nav-item">호텔 설정</RouterLink>
+      <RouterLink to="/setprice" class="nav-item">특별가 설정</RouterLink>
     </nav>
   </aside>
 </template>

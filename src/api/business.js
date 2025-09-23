@@ -72,3 +72,7 @@ export const uploadFileToS3 = (url, file, contentType) =>
     headers: { 'Content-Type': contentType },
     baseURL: '' // ✅ presigned URL은 절대 경로라 baseURL 무시
   })
+
+  //특별가 목록 가져오기
+export const getPriceOverrides = (contentid) =>
+  api.get(`/business/prices/list${q(contentid)}`);
