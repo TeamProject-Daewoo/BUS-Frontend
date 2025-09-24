@@ -7,18 +7,19 @@ import Footer from './components/common/Footer.vue'
 import Header from './components/common/Header.vue'
 
 import { useAuthStore } from './api/auth'
-import api from './api/axios'
+import { useHotelStore } from '@/stores/hotel'              // ✅ 추가
+import HotelRegisterModal from '@/components/common/HotelRegisterModal.vue' // ✅ 추가
 
 const authStore = useAuthStore()
+const hotelStore = useHotelStore()
 const route = useRoute()
 
 const layout = computed(() => route.meta.layout || 'DefaultLayout')
 
 onMounted(async () => {
-
   // Access Token이 스토어에 없는 경우에만 재발급을 시도합니다.
- authStore.initialize();
-});
+  authStore.initialize()
+})
 </script>
 
 <template>
@@ -40,6 +41,9 @@ onMounted(async () => {
   <div v-else>
     <RouterView />
   </div>
+
+  <!-- ✅ 전역 강제 모달 -->
+  <HotelRegisterModal v-if="hotelStore.showHotelRegisterModal" />
 </template>
 
 <style>

@@ -41,7 +41,6 @@ const hotel = ref({
   areaCode: '', category: '', sigunguCode: '', businessRegistrationNumber: ''
 })
 
-// ✅ 로그인된 사업자번호 가져오기
 onMounted(async () => {
   try {
     const res = await listMyHotels()
@@ -49,9 +48,15 @@ onMounted(async () => {
       hotel.value.businessRegistrationNumber = res.data[0].businessRegistrationNumber
     }
   } catch (e) {
-    console.error('호텔 목록 불러오기 실패', e)
+    if (e.response?.status === 403) {
+      console.warn('호텔이 없거나 접근 불가 → 새로 등록해야 합니다.')
+      // 굳이 실패로 처리하지 않고 넘어감
+    } else {
+      console.error('호텔 목록 불러오기 실패', e)
+    }
   }
 })
+
 
 const intro = ref({
   checkintime: '', checkouttime: '',

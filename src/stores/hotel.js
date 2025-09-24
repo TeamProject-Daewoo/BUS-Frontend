@@ -10,11 +10,16 @@ export const useHotelStore = defineStore('hotel', {
     selectedContentId: localStorage.getItem(STORAGE_KEY) || '',
     loading: false,
     error: null,
+
+    showHotelRegisterModal: false, // 모달 상태는 여전히 관리
   }),
 
   getters: {
     selectedHotel(state) {
       return state.hotels.find(h => h.contentid === state.selectedContentId) || null
+    },
+    hasHotels(state) {
+      return Array.isArray(state.hotels) && state.hotels.length > 0
     }
   },
 
@@ -40,14 +45,22 @@ export const useHotelStore = defineStore('hotel', {
       try {
         const { data } = await listMyHotels()
         this.hotels = Array.isArray(data) ? data : []
-        // 저장된 값이 없거나 더 이상 유효하지 않으면 첫 번째로 고정
-        if (!this.selectedContentId || !this.hotels.some(h => h.contentid === this.selectedContentId)) {
+        if (
+          !this.selectedContentId ||
+          !this.hotels.some(h => h.contentid === this.selectedContentId)
+        ) {
           this.selectedContentId = this.hotels[0]?.contentid || ''
           this.persist()
         }
       } catch (e) {
-        console.error('[hotelStore] loadHotels failed', e)
-        this.error = e?.message || 'failed'
+        if (e.response?.status === 403) {
+          console.warn('[hotelStore] 호텔 없음')
+          this.hotels = []
+          this.selectedContentId = ''
+        } else {
+          console.error('[hotelStore] loadHotels failed', e)
+          this.error = e?.message || 'failed'
+        }
       } finally {
         this.loading = false
       }
