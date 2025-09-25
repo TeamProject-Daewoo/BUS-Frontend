@@ -92,7 +92,7 @@ const handleLogin = async () => {
 
     } catch (error) {
       console.error("로그인 실패:", error);
-      uiStore.openModal(error.response?.data?.message || error.response?.data || "로그인에 실패했습니다.");
+      uiStore.openModal('로그인 실패', error.response?.data || "아직 승인되지 않은 사용자거나 아이디 또는 비밀번호가 올바르지 않습니다.");
     }
 };
 

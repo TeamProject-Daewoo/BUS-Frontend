@@ -2,7 +2,7 @@
     <div class="landing-container">
       <div class="content-box">
         <h1 class="main-title">
-            숙박/레저 판매 파트너를 위한<br>
+            숙박 시설 판매 파트너를 위한<br>
           <strong>HotelHub 파트너센터</strong>
         </h1>
         <p class="sub-title">

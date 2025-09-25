@@ -147,8 +147,8 @@ const checkUsername = async () => {
     return;
   }
 
-  if (!hasLetter || !hasNumber) {
-    uiStore.openModal('아이디 규칙 오류', '아이디는 영어와 숫자를 모두 포함해야 합니다.');
+  if (!hasLetter) {
+    uiStore.openModal('아이디 규칙 오류', '아이디는 영어를 반드시 포함해야 합니다.');
     return;
   }
   
@@ -283,7 +283,6 @@ const handleRegister = async () => {
     });
 
     uiStore.openModal('승인 요청 완료','승인 요청이 완료되었습니다. 관리자의 승인을 기다려주세요.');
-    router.push('/');
   } catch (error) {
     console.error('회원가입 실패:', error);
     uiStore.openModal(error.response?.data || '회원가입 중 오류가 발생했습니다.');
