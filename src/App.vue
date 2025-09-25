@@ -5,7 +5,10 @@ import { useRoute, RouterView } from 'vue-router'
 import Sidebar from './components/common/Sidebar.vue'
 import Footer from './components/common/Footer.vue'
 import Header from './components/common/Header.vue'
+import AlertModal from '@/components/common/AlertModal.vue';
 
+import { storeToRefs } from 'pinia';
+import { useUiStore } from './stores/commonUiStore';
 import { useAuthStore } from './api/auth'
 import { useHotelStore } from '@/stores/hotel'              // ✅ 추가
 import HotelRegisterModal from '@/components/common/HotelRegisterModal.vue' // ✅ 추가
@@ -13,8 +16,11 @@ import HotelRegisterModal from '@/components/common/HotelRegisterModal.vue' // �
 const authStore = useAuthStore()
 const hotelStore = useHotelStore()
 const route = useRoute()
-
+const uiStore = useUiStore();
 const layout = computed(() => route.meta.layout || 'DefaultLayout')
+
+const { isModalVisible, modalTitle, modalMessage } = storeToRefs(uiStore);
+const { closeModal } = uiStore;
 
 onMounted(async () => {
   // Access Token이 스토어에 없는 경우에만 재발급을 시도합니다.
@@ -36,6 +42,12 @@ onMounted(async () => {
     <footer class="footer-container">
       <Footer />
     </footer>
+    <AlertModal
+      v-if="isModalVisible"
+      :title="modalTitle"
+      :message="modalMessage"
+      @close="closeModal" 
+    />
   </div>
 
   <div v-else>
