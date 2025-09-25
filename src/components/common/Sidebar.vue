@@ -33,12 +33,12 @@ import { useHotelStore } from '@/stores/hotel'
 const store = useHotelStore()
 const selected = ref(store.selectedContentId || '')
 
-onMounted(async () => {
-  if (!store.hotels.length) {
-    await store.loadHotels()
-  }
-  selected.value = store.selectedContentId
-})
+// onMounted(async () => {
+//   if (!store.hotels.length) {
+//     await store.loadHotels()
+//   }
+//   selected.value = store.selectedContentId
+// })
 
 watch(() => store.selectedContentId, (v) => {
   selected.value = v

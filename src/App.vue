@@ -18,7 +18,7 @@ const layout = computed(() => route.meta.layout || 'DefaultLayout')
 
 onMounted(async () => {
   // Access Token이 스토어에 없는 경우에만 재발급을 시도합니다.
-  authStore.initialize()
+  authStore.initialize();
 })
 </script>
 
@@ -43,7 +43,7 @@ onMounted(async () => {
   </div>
 
   <!-- ✅ 전역 강제 모달 -->
-  <HotelRegisterModal v-if="hotelStore.showHotelRegisterModal" />
+<HotelRegisterModal v-if="hotelStore.showHotelRegisterModal" />
 </template>
 
 <style>

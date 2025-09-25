@@ -5,7 +5,6 @@ import { useAuthStore } from '@/api/auth';
 import api from '@/api/axios';
 
 const router = useRouter();
-const route = useRoute();
 const authStore = useAuthStore();
 
 const headerClass = computed(() => {

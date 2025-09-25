@@ -62,6 +62,7 @@ export const useHotelStore = defineStore('hotel', {
           this.error = e?.message || 'failed'
         }
       } finally {
+        console.log('호텔 불러오기')
         this.loading = false
       }
     }

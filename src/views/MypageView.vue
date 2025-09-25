@@ -1,7 +1,6 @@
 <template>
   <main class="mypage-container">
     <div class="mypage-layout">
-      <SidebarComponent :current-page="currentPage" @navigate="handleNavigation" />
       <div class="content-area">
         <component :is="currentViewComponent"></component>
       </div>

@@ -40,46 +40,61 @@ const router = createRouter({
 
 router.beforeEach((to, from, next) => {
   const authStore = useAuthStore()
-  const hotelStore = useHotelStore()
-  const isLoggedIn = !!authStore.accessToken
 
-  const proceed = () => {
-    if (!hotelStore.hotels?.length && !hotelStore.selectedContentId) {
-      hotelStore.restore?.()
-    }
-
-    // 인증 필요한데 로그인 안됨
-    if (to.meta.requiresAuth && !isLoggedIn) {
-      return next({ name: 'Home', query: { redirect: to.fullPath } })
-    }
-
-    // 호텔이 필요한 페이지 접근
-    if (to.meta.requiresHotel) {
-      if (!hotelStore.hotels?.length) {
-        // ✅ 등록된 호텔 자체가 없으면 → 생성 페이지에서는 모달 띄우지 않음
-        if (to.name !== 'settings-create') {
-          hotelStore.showHotelRegisterModal = true
-          return next(false)
-        }
-      }
-      if (!hotelStore.selectedContentId) {
-        return next({ name: 'settings-list' })
-      }
-    }
-
-    return next()
-  }
-
+  // 앱 초기화(자동 로그인)가 끝날 때까지 기다림
   if (authStore.isInitialized) {
-    proceed()
+    handleNavigation(to, from, next)
   } else {
-    const unwatch = watch(
-      () => authStore.isInitialized,
-      (ok) => {
-        if (ok) { proceed(); unwatch() }
+    // isInitialized 상태를 감시하여 완료되면 네비게이션 처리
+    const unwatch = watch(() => authStore.isInitialized, (isInitialized) => {
+      if (isInitialized) {
+        handleNavigation(to, from, next)
+        unwatch()
       }
-    )
+    })
   }
 })
+
+// 실제 네비게이션 규칙을 처리하는 함수
+function handleNavigation(to, from, next) {
+  const authStore = useAuthStore()
+  const hotelStore = useHotelStore()
+  const isLoggedIn = !!authStore.accessToken // 👈 2. 함수 내에서 최신 로그인 상태 확인
+
+  // 로그인 상태일 때만 호텔 정보 복원 시도
+  if (isLoggedIn && !hotelStore.hotels?.length) {
+    hotelStore.loadHotels() // hotelStore에 호텔 목록을 불러오는 액션
+  }
+  
+  // A. 로그인이 필요한 페이지인데, 로그인하지 않은 경우
+  if (to.meta.requiresAuth && !isLoggedIn) {
+    alert('로그인이 필요한 서비스입니다.')
+    return next({ name: 'login', query: { redirect: to.fullPath } })
+  }
+  
+  // B. 비로그인 상태여야 하는 페이지인데, 로그인한 경우
+  if (to.meta.requiresGuest && isLoggedIn) {
+    return next('/dashboard')
+  }
+
+  // C. 호텔 선택이 필요한 페이지인데, 호텔을 선택하지 않은 경우 (로그인 상태임이 보장됨)
+  if (to.meta.requiresHotel && !hotelStore.selectedContentId) {
+    // 등록된 호텔이 있는지 확인
+    if (!hotelStore.hasHotels) { // hasHotels는 호텔 배열 길이를 확인하는 getter
+      // 생성 페이지로 가는 경우는 예외
+      if (to.name !== 'settings-create') {
+        hotelStore.showHotelRegisterModal = true
+        return next(false) // 현재 페이지에 머무름
+      }
+    } else {
+      // 호텔은 있지만 선택을 안 한 경우, 선택 페이지로 보냄
+      return next({ name: 'settings-list' })
+    }
+  }
+  
+  // 모든 조건을 통과하면 정상적으로 이동
+  return next()
+}
+
 
 export default router
