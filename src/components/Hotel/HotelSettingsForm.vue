@@ -58,6 +58,9 @@
 <script setup>
 import { ref, watch } from 'vue'
 import { getHotel, updateHotel, getHotelIntro, upsertHotelIntro } from '@/api/business'
+import { useUiStore } from '@/stores/commonUiStore';
+
+const uiStore = useUiStore();
 
 const props = defineProps({
   contentid: { type: String, required: true }
@@ -155,10 +158,10 @@ async function saveBasic() {
       mapy: basic.value.mapy,
     }
     await updateHotel(payload, props.contentid)
-    alert('기본 정보 저장 완료')
+    uiStore.openModal('기본 정보 저장 완료')
   } catch (e) {
     console.error('PUT /business/hotel 실패', e)
-    alert('기본 정보 저장에 실패했어요.')
+    uiStore.openModal('기본 정보 저장에 실패했어요.')
   } finally {
     saving.value.basic = false
   }
@@ -168,10 +171,10 @@ async function saveIntro() {
   try {
     saving.value.intro = true
     await upsertHotelIntro({ ...intro.value }, props.contentid)
-    alert('소개/부대시설 저장 완료')
+    uiStore.openModal('소개/부대시설 저장 완료')
   } catch (e) {
     console.error('PUT /business/hotel/intro 실패', e)
-    alert('소개/부대시설 저장에 실패했어요.')
+    uiStore.openModal('소개/부대시설 저장에 실패했어요.')
   } finally {
     saving.value.intro = false
   }

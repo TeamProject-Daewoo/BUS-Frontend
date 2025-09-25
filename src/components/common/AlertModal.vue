@@ -1,5 +1,5 @@
 <template>
-  <div class="modal-overlay" @click.self="$emit('close')" v-if="layout === 'DefaultLayout'">
+  <div class="modal-overlay" @click.self="$emit('close')">
     <div class="modal-content">
       <h3>{{ title }}</h3>
       <p>{{ message }}</p>

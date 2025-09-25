@@ -33,6 +33,9 @@
 import { ref } from 'vue'
 import { uploadToS3 } from '@/utils/s3Uploader'
 import { registerHotel } from '@/api/business'
+import { useUiStore } from '@/stores/commonUiStore';
+
+const uiStore = useUiStore();
 
 const props = defineProps({ hotel: Object, intro: Object, rooms: Array })
 const emits = defineEmits(['prev'])
@@ -77,11 +80,11 @@ async function submitAll() {
     const res = await registerHotel(payload)
     console.log('[REGISTER SUCCESS]', res.data)
 
-    alert('등록이 완료되었습니다!')
+    uiStore.openModal('등록이 완료되었습니다!')
   } catch (err) {
     console.error('[REGISTER FAIL]', err)
     const msg = err.response?.data || err.message || '알 수 없는 오류'
-    alert(`등록 중 오류 발생: ${msg}`)
+    uiStore.openModal(`등록 중 오류 발생: ${msg}`)
   } finally {
     submitting.value = false
   }

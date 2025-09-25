@@ -11,7 +11,7 @@ import HotelsSelectView from '@/views/HotelsSelectView.vue'
 import HotelCreateView from '@/views/HotelCreateView.vue'
 import SpecialPriceEditor from '@/views/SpecialPriceEditor.vue'
 import { watch } from 'vue'
-
+import { useUiStore } from '@/stores/commonUiStore';
 import { useAuthStore } from '@/api/auth'
 import { useHotelStore } from '@/stores/hotel'
 
@@ -68,7 +68,8 @@ function handleNavigation(to, from, next) {
   
   // A. 로그인이 필요한 페이지인데, 로그인하지 않은 경우
   if (to.meta.requiresAuth && !isLoggedIn) {
-    alert('로그인이 필요한 서비스입니다.')
+    const uiStore = useUiStore();
+    uiStore.openModal('로그인이 필요한 서비스입니다.')
     return next({ name: 'login', query: { redirect: to.fullPath } })
   }
   

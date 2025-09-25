@@ -125,7 +125,9 @@ import { ref, onMounted, watch, reactive } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { useHotelStore } from '@/stores/hotel'
 import { getRooms, updateRoomApi, deleteRoomApi } from '@/api/business'
+import { useUiStore } from '@/stores/commonUiStore';
 
+const uiStore = useUiStore();
 const router = useRouter()
 const store = useHotelStore()
 
@@ -170,7 +172,7 @@ async function adjustRoomCount(r, delta) {
     console.log('roomcount 업데이트 성공:', newValue)
   } catch (e) {
     console.error('roomcount 업데이트 실패', e)
-    alert('객실 수 업데이트 실패')
+    uiStore.openModal('객실 수 업데이트 실패')
   }
 }
 

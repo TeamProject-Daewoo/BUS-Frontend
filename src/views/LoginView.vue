@@ -7,8 +7,8 @@
 
         <form @submit.prevent="handleLogin">
           <div class="input-group">
-            <label for="user_name">이메일</label>
-            <input type="text" id="user_name" v-model="user_name" required />
+            <label for="user_name">아이디</label>
+            <input type="text" id="user_name" v-model="user_name" maxlength="20" required />
           </div>
 
           <div class="input-group">
@@ -39,7 +39,7 @@
     </div>
 
     <div class="image-container">
-       <img src="https://images.unsplash.com/photo-1566073771259-6a8506099945?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80" alt="Hotel promotional image" />
+      <Sidemenu />
       <div class="dots">
         <span class="dot active"></span>
         <span class="dot"></span>
@@ -50,17 +50,33 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import Sidemenu from '@/components/sidepage/loginside.vue';
+import { ref, watch } from 'vue';
 import { useRouter } from 'vue-router'; // useRouter 임포트
 import api from '@/api/axios'; // 우리가 만든 axios 인스턴스 임포트
 import { useAuthStore } from '@/api/auth';
+import { useUiStore } from '@/stores/commonUiStore';
 
+const uiStore = useUiStore();
 const user_name = ref('');
 const password = ref('');
 const rememberMe = ref(false);
 const passwordFieldType = ref('password');
 const router = useRouter(); // router 인스턴스 생성
 const authStore = useAuthStore();
+
+watch(user_name, (newValue) => {
+  // 정규식: 영어 대소문자(a-z, A-Z)와 숫자(0-9)가 아닌 모든 문자를 찾음
+  const regex = /[^a-zA-Z0-9]/g;
+  
+  // 특수문자를 빈 문자열로 대체하여 제거
+  const sanitizedValue = newValue.replace(regex, '');
+
+  // 변경된 값이 원래 값과 다를 경우에만 업데이트 (무한 루프 방지)
+  if (newValue !== sanitizedValue) {
+    user_name.value = sanitizedValue;
+  }
+});
 
 const handleLogin = async () => {
     try {
@@ -72,12 +88,11 @@ const handleLogin = async () => {
         // Body로 받은 Access Token을 Pinia 스토어에 저장
         authStore.setToken(response.data.accessToken);
 
-        alert('로그인에 성공했습니다!');
         router.push('/dashboard'); //메인페이지로 이동
 
     } catch (error) {
       console.error("로그인 실패:", error);
-      alert(error.response?.data?.message || error.response?.data || "로그인에 실패했습니다.");
+      uiStore.openModal(error.response?.data?.message || error.response?.data || "로그인에 실패했습니다.");
     }
 };
 

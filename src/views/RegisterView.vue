@@ -9,7 +9,7 @@
           <div class="input-group">
             <label for="user_name">아이디</label>
             <p class="input-help-text">
-    숫자, 영어 대소문자만을 사용하여 5~20자 사이로 입력해주세요.
+    숫자, 영어 대소문자를 사용하여 5~20자 사이로 입력해주세요.
   </p>
             <div class="input-with-button">
               <input 
@@ -17,6 +17,7 @@
                 id="user_name" 
                 v-model="formData.user_name" 
                 placeholder="아이디 입력"
+                maxlength="20"
                 required />
               <button 
                 type="button" 
@@ -80,12 +81,13 @@
       </div>
     </div>
     <div class="image-container">
-       <img src="https://images.unsplash.com/photo-1582719508461-905c673771fd?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1925&q=80" alt="Hotel pool view" />
+      <Sidemenu />
     </div>
   </div>
 </template>
 
 <script setup>
+import Sidemenu from '@/components/sidepage/registerside.vue';
 import { reactive, ref, watch, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '@/api/axios';
@@ -99,6 +101,7 @@ const formData = reactive({
   user_name: '',
   name: '',
   phone: '',
+  rawPhone: '',
   business_registration_number: '',
   password: '',
   confirmPassword: '',
@@ -127,17 +130,31 @@ const closeTermsModal = () => isTermsModalOpen.value = false;
 
 // --- 아이디 중복 확인 ---
 const checkUsername = async () => {
-  if (!formData.user_name) {
+  const username = formData.user_name;
+
+  if (!username) {
     uiStore.openModal('아이디 입력 필요', '아이디를 입력해주세요.');
     return;
   }
-  if (formData.user_name.length < 5 || formData.user_name.length > 20) {
-    uiStore.openModal('아이디 길이 오류', '아이디는 5자 이상, 20자 이하로 입력해주세요.');
-    console.log(uiStore.isModalVisible);
+
+  // 👇 [수정] 아이디 형식 및 규칙 검사
+  const regex = /^[a-zA-Z0-9]{5,20}$/; // 1. 영어/숫자만, 5~20자 길이
+  const hasLetter = /[a-zA-Z]/.test(username); // 2. 영어가 포함되었는가
+  const hasNumber = /[0-9]/.test(username);  // 3. 숫자가 포함되었는가
+
+  if (!regex.test(username)) {
+    uiStore.openModal('아이디 형식 오류', '아이디는 5~20자의 영어와 숫자로 구성되어야 합니다.');
     return;
   }
+
+  if (!hasLetter || !hasNumber) {
+    uiStore.openModal('아이디 규칙 오류', '아이디는 영어와 숫자를 모두 포함해야 합니다.');
+    return;
+  }
+  
+  // 모든 검사를 통과하면 중복 확인 API 호출
   try {
-    await api.post('/api/auth/check-username', { username: formData.user_name });
+    await api.post('/api/auth/check-username', { username: username });
     usernameMessage.value = '사용 가능한 아이디입니다.';
     usernameMessageClass.value = 'success-text';
     isUsernameChecked.value = true;
@@ -148,12 +165,55 @@ const checkUsername = async () => {
   }
 };
 
+
 // 사용자가 아이디를 다시 수정하면, 중복확인 상태와 메시지를 초기화
 watch(() => formData.user_name, () => {
     isUsernameChecked.value = false;
     usernameMessage.value = '';
     usernameMessageClass.value = '';
 });
+
+watch(
+  () => formData.name,
+  (newValue) => {
+    // 정규식: 한글(ㄱ-ㅎ,ㅏ-ㅣ,가-힣)이 아닌 모든 문자를 찾음
+    const regex = /[^ㄱ-ㅎ|ㅏ-ㅣ|가-힣]/g;
+    // 한글이 아닌 문자를 빈 문자열로 대체하여 제거
+    const koreanOnly = newValue.replace(regex, '');
+
+    // 변경된 값이 원래 값과 다를 경우에만 업데이트 (무한 루프 방지)
+    if (newValue !== koreanOnly) {
+      formData.name = koreanOnly;
+    }
+  }
+);
+
+watch(
+  () => formData.phone,
+  (newValue) => {
+    // 1. 숫자 이외의 문자를 모두 제거합니다.
+    const rawNumber = newValue.replace(/\D/g, '');
+    
+    // 2. 하이픈이 제거된 순수 숫자 값을 별도로 저장합니다.
+    formData.rawPhone = rawNumber;
+
+    // 3. 길이에 따라 하이픈을 추가합니다.
+    let formattedNumber = '';
+    if (rawNumber.length < 4) { // 010
+      formattedNumber = rawNumber;
+    } else if (rawNumber.length < 8) { // 010-1234
+      formattedNumber = `${rawNumber.slice(0, 3)}-${rawNumber.slice(3)}`;
+    } else { // 010-1234-5678
+      formattedNumber = `${rawNumber.slice(0, 3)}-${rawNumber.slice(3, 7)}-${rawNumber.slice(7, 11)}`;
+    }
+    
+    // 4. 무한 루프를 방지하기 위해, 변경된 경우에만 값을 업데이트합니다.
+    if (newValue !== formattedNumber) {
+      formData.phone = formattedNumber;
+    }
+  }
+);
+
 
 
 // --- 사업자 번호 자동 포커스 이동 ---
@@ -180,11 +240,35 @@ const isFormValid = computed(() => {
   return allFieldsFilled && isUsernameChecked.value && passwordsMatch.value && formData.agree;
 });
 
+// 👇 [추가] 휴대폰 번호가 '010'으로 시작하고 11자리인지 검사하는 함수
+const isValidPhoneNumber = (phone) => {
+  const regex = /^010\d{8}$/; // '010'으로 시작하는 11자리 숫자
+  return regex.test(phone);
+};
+
+// 👇 [추가] 이름에 완성되지 않은 한글(자음/모음)이 있는지 검사하는 함수
+const hasIncompleteKorean = (name) => {
+  const regex = /[ㄱ-ㅎ|ㅏ-ㅣ]/; // 단일 자음 또는 모음
+  return regex.test(name);
+};
+
 
 // --- 회원가입 제출 ---
 const handleRegister = async () => {
   if (!isFormValid.value) {
-    alert('모든 입력 항목을 올바르게 채우고 약관에 동의해주세요.');
+    uiStore.openModal('모든 입력 항목을 올바르게 채우고 약관에 동의해주세요.');
+    return;
+  }
+
+   // 👇 [추가] 사업자 이름 검사
+   if (hasIncompleteKorean(formData.name)) {
+    uiStore.openModal('입력 오류', '사업자 이름에 완성되지 않은 한글(자음/모음)을 사용할 수 없습니다.');
+    return;
+  }
+
+  // 👇 [추가] 휴대폰 번호 검사 (하이픈 없는 rawPhone으로 검사)
+  if (!isValidPhoneNumber(formData.rawPhone)) {
+    uiStore.openModal('입력 오류', "휴대폰 번호는 '010'으로 시작하는 11자리 숫자여야 합니다.");
     return;
   }
   
@@ -198,11 +282,11 @@ const handleRegister = async () => {
         role: formData.role
     });
 
-    alert('회원가입이 완료되었습니다. 관리자의 승인을 기다려주세요.');
-    router.push('/login-choice');
+    uiStore.openModal('승인 요청 완료','승인 요청이 완료되었습니다. 관리자의 승인을 기다려주세요.');
+    router.push('/');
   } catch (error) {
     console.error('회원가입 실패:', error);
-    alert(error.response?.data || '회원가입 중 오류가 발생했습니다.');
+    uiStore.openModal(error.response?.data || '회원가입 중 오류가 발생했습니다.');
   }
 };
 </script>
@@ -243,11 +327,10 @@ const handleRegister = async () => {
   background-color: #f0f0f0;
 }
 
-.image-container img {
-  width: 85%;
-  height: 85%;
-  object-fit: cover;
-  border-radius: 20px;
+.image-container {
+  flex: 1;
+  display: flex; /* 자식 요소를 정렬하기 위해 flex 사용 */
+  padding: 0; /* 내부 여백 제거 */
 }
 
 /* 폼 요소 스타일 */

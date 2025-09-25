@@ -62,6 +62,9 @@ import {ref, watch} from 'vue';
 import { useRouter } from 'vue-router';
 import apiClient from '@/api/axios.js'; // @ 별칭을 사용하도록 경로 수정
 import { useAuthStore } from '@/api/auth.js'; // authStore를 가져옵니다
+import { useUiStore } from '@/stores/commonUiStore';
+
+const uiStore = useUiStore();
 
 const router = useRouter();
 const authStore = useAuthStore(); // authStore 인스턴스 생성
@@ -81,7 +84,7 @@ const fetchProfile = async () => {
     originalProfile.value = { ...response.data };
   } catch (error) {
     console.error("프로필 정보를 불러오는 데 실패했습니다.", error);
-    alert("세션이 만료되었거나 로그인이 필요합니다.");
+    uiStore.openModal("세션이 만료되었거나 로그인이 필요합니다.");
     
     // 👇 2. clearToken -> logout으로 수정
     authStore.logout(); 
@@ -101,7 +104,7 @@ const cancelEditing = () => {
 
 const submitUpdate = async () => {
   if (!passwords.value.currentPassword) {
-    alert('정보를 수정하려면 현재 비밀번호를 입력해야 합니다.');
+    uiStore.openModal('정보를 수정하려면 현재 비밀번호를 입력해야 합니다.');
     return;
   }
 
@@ -118,11 +121,11 @@ const submitUpdate = async () => {
 
     await fetchProfile();
     isEditing.value = false;
-    alert('수정이 완료되었습니다.');
+    uiStore.openModal('수정이 완료되었습니다.');
     passwords.value = { currentPassword: '', newPassword: '' };
   } catch (error) {
     console.error("프로필 수정에 실패했습니다.", error);
-    alert(error.response?.data?.message || "프로필 수정 중 오류가 발생했습니다.");
+    uiStore.openModal(error.response?.data?.message || "프로필 수정 중 오류가 발생했습니다.");
   }
 };
 
@@ -130,12 +133,12 @@ const withdraw = async () => {
   if (confirm("정말 탈퇴하시겠습니까? 모든 정보가 삭제되며 복구할 수 없습니다.")) {
     try {
       await apiClient.delete('/api/mypage/member');
-      alert("회원 탈퇴가 완료되었습니다.");
+      uiStore.openModal("회원 탈퇴가 완료되었습니다.");
       authStore.clearToken(); // 토큰 정리
       router.push('/login');
     } catch (error) {
       console.error("회원 탈퇴에 실패했습니다.", error);
-      alert(error.response?.data?.message || "회원 탈퇴 중 오류가 발생했습니다.");
+      uiStore.openModal(error.response?.data?.message || "회원 탈퇴 중 오류가 발생했습니다.");
     }
   }
 };
@@ -147,7 +150,7 @@ const handleLogout = async () => {
     // 👇 2. clearToken -> logout으로 수정
     authStore.logout();
     
-    alert('로그아웃되었습니다.');
+    uiStore.openModal('로그아웃되었습니다.');
     router.push('/loginview'); // 로그인 페이지 경로 확인
   } catch (error) {
     console.error('로그아웃 실패:', error);
@@ -163,7 +166,7 @@ watch(
       fetchProfile();
     } else if (isInitialized && !authStore.accessToken) {
       // 초기화 후에도 토큰이 없으면 로그인 페이지로 보냄
-      alert('로그인이 필요합니다.');
+      uiStore.openModal('로그인이 필요합니다.');
       router.push('/loginview');
     }
   },

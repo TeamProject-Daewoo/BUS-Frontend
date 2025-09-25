@@ -42,17 +42,17 @@ onMounted(async () => {
     <footer class="footer-container">
       <Footer />
     </footer>
-    <AlertModal
-      v-if="isModalVisible"
-      :title="modalTitle"
-      :message="modalMessage"
-      @close="closeModal" 
-    />
   </div>
 
   <div v-else>
     <RouterView />
   </div>
+  <AlertModal
+      v-if="isModalVisible"
+      :title="modalTitle"
+      :message="modalMessage"
+      @close="closeModal" 
+    />
 
   <!-- ✅ 전역 강제 모달 -->
 <HotelRegisterModal v-if="hotelStore.showHotelRegisterModal" />

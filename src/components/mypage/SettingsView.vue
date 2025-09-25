@@ -37,6 +37,10 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
+import { useUiStore } from '@/stores/commonUiStore';
+
+const uiStore = useUiStore();
+
 
 const settings = ref({
   marketing: {
@@ -49,7 +53,7 @@ const settings = ref({
 
 const saveSettings = () => {
   console.log('저장된 설정:', settings.value);
-  alert('설정이 저장되었습니다.');
+  uiStore.openModal('설정이 저장되었습니다.');
 };
 
 onMounted(() => {

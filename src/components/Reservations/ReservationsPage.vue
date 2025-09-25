@@ -73,6 +73,7 @@ import { ref, computed, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useHotelStore } from '@/stores/hotel'
 import { getReservations, getRooms, bulkReservations, updateReservation } from '@/api/business'
+import { useUiStore } from '@/stores/commonUiStore';
 
 import ReservationsHeader from './ReservationsHeader.vue'
 import ReservationsToolbar from './ReservationsToolbar.vue'
@@ -81,6 +82,7 @@ import ReservationsPager from './ReservationsPager.vue'
 import ReservationsEditModal from './ReservationsEditModal.vue'
 
 const store = useHotelStore()
+const uiStore = useUiStore();
 
 // ── state
 const rows = ref([])
@@ -120,12 +122,12 @@ async function saveEdit(form) {
       paymentId: form.paymentId
     })
 
-    alert('수정 완료')
+    uiStore.openModal('수정 완료')
     editing.value = null
     await loadReservations()
   } catch (e) {
     console.error(e)
-    alert('수정 실패')
+    uiStore.openModal('수정 실패')
   }
 }
 
@@ -268,11 +270,11 @@ async function applyBulk() {
   const ids = Array.from(checked.value)
   try {
     await bulkReservations(scope.value === 'single' ? store.selectedContentId : null, ids, bulk.value)
-    alert('일괄 작업이 완료되었습니다.')
+    uiStore.openModal('일괄 작업이 완료되었습니다.')
     await loadReservations()
   } catch (e) {
     console.error(e)
-    alert('일괄 작업 실패')
+    uiStore.openModal('일괄 작업 실패')
   }
   checked.value.clear()
   bulk.value = ''
