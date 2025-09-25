@@ -70,7 +70,7 @@ api.interceptors.response.use(
       return api(original)
     } catch (e) {
       flushQueue(e, null)
-      authStore.clearToken()
+      authStore.logout();
       return Promise.reject(e)
     } finally {
       isRefreshing = false

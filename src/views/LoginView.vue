@@ -54,6 +54,10 @@ import { ref } from 'vue';
 import { useRouter } from 'vue-router'; // useRouter 임포트
 import api from '@/api/axios'; // 우리가 만든 axios 인스턴스 임포트
 import { useAuthStore } from '@/api/auth';
+import { useUiStore } from '@/store/commonUiStore';
+
+const uiStore = useUiStore();
+
 
 const user_name = ref('');
 const password = ref('');
@@ -72,12 +76,12 @@ const handleLogin = async () => {
         // Body로 받은 Access Token을 Pinia 스토어에 저장
         authStore.setToken(response.data.accessToken);
 
-        alert('로그인에 성공했습니다!');
+        uiStore.openModal('로그인에 성공했습니다!');
         router.push('/dashboard'); //메인페이지로 이동
 
     } catch (error) {
       console.error("로그인 실패:", error);
-      alert(error.response?.data?.message || error.response?.data || "로그인에 실패했습니다.");
+      uiStore.openModal(error.response?.data?.message || error.response?.data || "로그인에 실패했습니다.");
     }
 };
 
