@@ -14,6 +14,7 @@ import { watch } from 'vue'
 import { useUiStore } from '@/stores/commonUiStore';
 import { useAuthStore } from '@/api/auth'
 import { useHotelStore } from '@/stores/hotel'
+import ReviewsView from '@/views/ReviewsView.vue'
 
 const routes = [
   { path: '/',            name: 'Home',            component: MainLandingPage,  meta: { layout: 'EmptyLayout' } },
@@ -24,6 +25,7 @@ const routes = [
   { path: '/dashboard',   name: 'dashboard',       component: DashboardView,    meta: { requiresAuth: true, requiresHotel: true } },
   { path: '/reservations',name: 'reservations',    component: ReservationsView, meta: { requiresAuth: true, requiresHotel: true } },
   { path: '/rooms',       name: 'rooms',           component: RoomsView,        meta: { requiresAuth: true, requiresHotel: true } },
+  { path: '/reviews',       name: 'reviews',       component: ReviewsView,      meta: { requiresAuth: true, requiresHotel: true } },
 
   { path: '/settings',              name: 'settings-list',   component: HotelsSelectView, meta: { requiresAuth: true, requiresHotel: true } },
   { path: '/settings/new',          name: 'settings-create', component: HotelCreateView,  meta: { requiresAuth: true } },
