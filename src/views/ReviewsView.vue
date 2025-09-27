@@ -29,7 +29,7 @@
         </thead>
         <tbody>
           <tr v-if="reviewList.length === 0">
-            <td :colspan="8" class="no-data">리뷰가 없습니다.</td>
+            <td :colspan="7" class="no-data">리뷰가 없습니다.</td>
           </tr>
           <tr v-for="review in reviewList" :key="review.reviewId">
             <td>
@@ -56,6 +56,7 @@
 <script setup>
 import axios from "@/api/axios";
 import { useHotelStore } from "@/stores/hotel";
+import { debounce } from "lodash";
 import { storeToRefs } from "pinia";
 import { computed, onMounted, ref, watch } from "vue";
 
@@ -93,8 +94,11 @@ const buttonClass = computed(() => {
 
 function handleInput(event) {
     searchTerm.value = event.target.value;
-    fetchReviews(); 
+    debounce(); 
 }
+const debouncedSearch = debounce(() => {
+    fetchReviews();
+}, 100);
 
 const fetchReviews = async () => {  
     const review = await axios.get(`${import.meta.env.VITE_API_URL}/api/reviews/viewByHotelId`, {
@@ -104,7 +108,6 @@ const fetchReviews = async () => {
       }
     });
     reviewList.value = review.data;
-    console.log(reviewList.value)
 }
 
 const formatDate = (dateString) => {
