@@ -43,7 +43,7 @@
             </td>
             <td>{{ formatDate(review.reviewDate) }}</td>
             <td class="actions-cell">
-              <button v-if="!review.reported" class="btn btn-report" @click="reportReview(review.reviewId)">신고</button>
+              <button v-if="!review.reported" class="btn btn-report" @click="report(review.reviewId)">신고</button>
               <p v-else class="report-success">신고 완료</p>
             </td>
           </tr>
@@ -54,7 +54,7 @@
 </template>
 
 <script setup>
-import axios from "@/api/axios";
+import api from "@/api/axios";
 import { useHotelStore } from "@/stores/hotel";
 import { debounce } from "lodash";
 import { storeToRefs } from "pinia";
@@ -94,17 +94,18 @@ const buttonClass = computed(() => {
 
 function handleInput(event) {
     searchTerm.value = event.target.value;
-    debounce(); 
+    debouncedSearch(); 
 }
 const debouncedSearch = debounce(() => {
     fetchReviews();
 }, 100);
 
-const fetchReviews = async () => {  
-    const review = await axios.get(`${import.meta.env.VITE_API_URL}/api/reviews/viewByHotelId`, {
+
+async function fetchReviews () {
+    const review = await api.get(`/api/reviews/viewByHotelId`, {
       params: {
         hotelId: hotelStore.selectedContentId,
-        searchTerm: searchTerm.value 
+        searchTerm: searchTerm.value
       }
     });
     reviewList.value = review.data;
@@ -122,10 +123,10 @@ const formatDate = (dateString) => {
   });
 };
 
-const reportReview = async (id) => {
+const report = async (id) => {
   if (confirm(`정말로 ID: ${id} 리뷰를 신고 하시겠습니까?`)) {
     alert(`ID: ${id} 리뷰를 신고 하었습니다.`);
-    await axios.get(`${import.meta.env.VITE_API_URL}/api/reviews/report/${id}`, {
+    await api.get(`/api/reviews/report/${id}`, {
         params: {
           isReport: true
         }
@@ -141,7 +142,7 @@ const reportAll = async () => {
   }
   if (confirm(`정말로 선택한 항목들을 신고하시겠습니까?`)) {
     alert(`선택한 모든 리뷰가 신고되었습니다.`);
-    await axios.get(`${import.meta.env.VITE_API_URL}/api/reviews/reportAll`, {
+    await api.get(`/api/reviews/reportAll`, {
       params: {
         reviews: selectedReviews.value,
         isReport: true
@@ -159,7 +160,6 @@ const toggleSelectAll = (event) => {
   } else {
     selectedReviews.value = [];
   }
-  console.log(selectedReviews.value)
 };
 </script>
 
