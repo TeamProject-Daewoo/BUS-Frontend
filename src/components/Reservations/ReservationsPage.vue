@@ -43,7 +43,7 @@
         @toggle="toggle"
         @toggle-all="toggleAll"
         @toggle-more="toggleMore"
-        @edit="editReservation"
+        @delete="deleteReservation"
       />
     </div>
 
@@ -80,6 +80,7 @@ import ReservationsToolbar from './ReservationsToolbar.vue'
 import ReservationsTable from './ReservationsTable.vue'
 import ReservationsPager from './ReservationsPager.vue'
 import ReservationsEditModal from './ReservationsEditModal.vue'
+import api from '@/api/axios';
 
 const store = useHotelStore()
 const uiStore = useUiStore();
@@ -100,11 +101,17 @@ let scope = ref('single')
 const moreOpen = ref(null)
 function toggleMore(id) { moreOpen.value = moreOpen.value === id ? null : id }
 
-// 수정 모달
+// 삭제 모달
 let editing = ref(null)
-function editReservation(r) {
-  editing.value = { ...r }
+async function deleteReservation(r) {
   moreOpen.value = null
+  if(confirm('정말로 삭제 하시겠습니까?')) {
+    const response = await api.post('/api/payment/cancel', {
+       reservationId: r.reservationId,
+       cancelReason: '고객 요청'
+    });
+    loadRooms();
+  }
 }
 async function saveEdit(form) {
   try {

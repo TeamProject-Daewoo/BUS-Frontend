@@ -5,7 +5,6 @@
         <th style="width:42px"><input type="checkbox" :checked="allChecked" @change="$emit('toggle-all', $event)" /></th>
         <th style="width:110px">예약 ID</th>
         <th>고객</th>
-        <th style="width:120px">예약 상태</th>
         <th style="width:160px">객실</th>
         <th style="width:130px">연락처</th>
         <th style="width:100px">성인</th>
@@ -13,7 +12,7 @@
         <th style="width:130px">체크인</th>
         <th style="width:130px">체크아웃</th>
         <th style="width:160px">예약일시</th>
-        <th style="width:110px">결제 상태</th>
+        <th style="width:110px">예약 상태</th>
         <th style="width:56px"></th>
       </tr>
     </thead>
@@ -32,13 +31,6 @@
           </div>
         </td>
 
-        <!-- 예약 상태 -->
-        <td>
-          <span class="badge" :class="{ success: r.statusType==='active', warning: r.statusType==='pending', danger: r.statusType==='cancel' }">
-            {{ r.statusLabel }}
-          </span>
-        </td>
-
         <!-- 객실 -->
         <td :title="titleTooltip(r)"><span class="room-name">{{ resolvedRoomTitle(r) }}</span></td>
 
@@ -50,10 +42,10 @@
         <td>{{ dt(r.checkOutDate) }}</td>
         <td>{{ formatDateTime(r.reservationDate) }}</td>
 
-        <!-- 결제 상태 -->
+        <!-- 예약 상태 -->
         <td>
-          <span class="pay" :class="{ paid: r.paymentType==='paid', due: r.paymentType==='due', refund: r.paymentType==='refund' }">
-            {{ r.paymentLabel }}
+          <span class="badge" :class="{ success: r.statusType==='active', warning: r.statusType==='pending', danger: r.statusType==='cancel' }">
+            {{ r.statusLabel }}
           </span>
         </td>
 
@@ -63,7 +55,7 @@
             <button class="btn-more" @click="$emit('toggle-more', r.reservationId)">⋯</button>
             <transition name="fade-slide">
               <div v-if="moreOpen === r.reservationId" class="dropdown">
-                <button class="dropdown-item" @click="$emit('edit', r)">수정</button>
+                <button class="dropdown-item" @click="$emit('delete', r)">삭제</button>
               </div>
             </transition>
           </div>
