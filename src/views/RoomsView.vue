@@ -142,7 +142,7 @@ const mainByRoomId = reactive({})  // 객실 ID별로 대표 이미지를 저장
 
 // 객실 수정 페이지로 이동
 function goEdit(r) {
-  router.push({ path: `/rooms/edit/${r.id}`, query: { contentid: store.selectedContentId } })
+  router.push({ path: `/rooms/edit`, query: { id:r.id, contentid:store.selectedContentId } })
 }
 
 // 추가 페이지로 이동
@@ -156,6 +156,7 @@ onMounted(loadOnMount)
 watch(() => store.selectedContentId, loadOnMount)
 
 async function loadOnMount() {
+  console.log()
   if (!store.selectedContentId) { rooms.value = [] } 
   else await load()
 }

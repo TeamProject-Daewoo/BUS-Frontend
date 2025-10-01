@@ -1,6 +1,6 @@
 <template>
   <div class="card">
-    <h2 class="section-title">객실 등록</h2>
+    <h2 class="section-title">객실 정보 수정</h2>
       <!-- 객실명 -->
       <div class="form-row">
         <div class="form-label">객실명</div>
@@ -108,7 +108,7 @@
             </div>
 
             <!-- 이미지가 없을 때 -->
-            <div v-if="room.previewImages.length === 0" class="placeholder big">
+            <div v-if="!room.previewImages || room.previewImages.length === 0" class="placeholder big">
               아직 업로드된 이미지가 없습니다.
             </div>
           </div>
@@ -120,55 +120,92 @@
       </div>
 
     <!-- 객실 추가 버튼 -->
-    <div class="add-room" @click="addRoom">
-      <div class="plus-icon">＋</div>
-      <span>새 객실 추가</span>
+    <div class="add-room" @click="editRoom">
+      <span>수정</span>
     </div>
   </div>
 </template>
 
 <script setup>
-import { createRoom } from '@/api/business';
+import { createRoom, getRooms, updateRoomApi } from '@/api/business';
+import router from '@/router';
 import { uploadToS3 } from '@/utils/s3Uploader';
-import { ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 
 const route = useRoute();
-const createNewRoomSchema = () => ({
+const createNewRoomSchema = (room) => ({
   // 주요 정보
-  roomtitle: '',       
-  roomcount: 1,
-  roombasecount: 2,
-  roommaxcount: 4,
-  roomsize1: '',      
+  roomtitle: room.roomtitle, 
+  roomcount: room.roomcount, 
+  roombasecount: room.roombasecount,
+  roommaxcount: room.roommaxcount, 
+  roomsize1: room.roomsize1, 
   
   // 가격 정보
-  roomoffseasonminfee1: 0, 
-  roomoffseasonminfee2: 0, 
-  roompeakseasonminfee1: 0, 
-  roompeakseasonminfee2: 0, 
+  roomoffseasonminfee1: room.roomoffseasonminfee1, 
+  roomoffseasonminfee2: room.roomoffseasonminfee2, 
+  roompeakseasonminfee1: room.roompeakseasonminfee1, 
+  roompeakseasonminfee2: room.roompeakseasonminfee2, 
   
-  roomintro: '',
-  roomaircondition: 'N',
-  roombath: 'N',
-  roomtv: 'N',
-  roominternet: 'N',
-  roomrefrigerator: 'N',
-  roomsofa: 'N',
-  roomtable: 'N',
+  // 소개 및 옵션
+  roomintro: room.roomintro,
+  roomaircondition: room.roomaircondition,
+  roombath: room.roombath,
+  roomtv: room.roomtv,
+  roominternet: room.roominternet,
+  roomrefrigerator: room.roomrefrigerator,
+  roomsofa: room.roomsofa,
+  roomtable: room.roomtable,
 
-  files: [], 
+  // 이미지 및 임시 데이터
+  files: [],
   previewImages: [], 
-  roomimg1: '',
-  roomimg2: '',
-  roomimg3: '',
-  roomimg4: '',
-  roomimg5: '',
+  roomimg1: room.roomimg1,
+  roomimg2: room.roomimg2,
+  roomimg3: room.roomimg3,
+  roomimg4: room.roomimg4,
+  roomimg5: room.roomimg5
 });
-const room = ref(createNewRoomSchema());
 
+const contentid = route.query.contentid;
+const id = route.query.id
+const room = ref({})
+
+onMounted(async () => {
+  const result = await getRooms(contentid);
+  const filteredRooms = result.data.filter(room => room.id == id);
+  const data = room.value = createNewRoomSchema(filteredRooms[0]);
+  //다시 파일형태로 변환
+  const imageUrls = [data.roomimg1, data.roomimg2, data.roomimg3, data.roomimg4, data.roomimg5]
+      .filter(url => url && url.startsWith('http'));
+
+  const filePromises = imageUrls.map(url => urlToFile(url));
+  const fileObjects = await Promise.all(filePromises);
+  room.value.files = fileObjects;
+
+  room.value.previewImages = fileObjects.map(file => {    
+      return URL.createObjectURL(file); 
+  });
+});
+
+
+async function urlToFile(url, filename) {
+  const response = await fetch(url);
+  
+  const blob = await response.blob();
+  if (!filename) {
+    const urlParts = url.split('/');
+    filename = urlParts[urlParts.length - 1]; 
+  }
+  const mimeType = blob.type;
+
+  return new File([blob], filename, { type: mimeType });
+}
 // 객실 추가
-async function addRoom() {
+async function editRoom() {
+ 
+  if(!room.value.files) return;
   const uploadedUrls = await Promise.all(
     room.value.files.slice(0, 5).map(file => uploadToS3(file))
   )
@@ -178,7 +215,9 @@ async function addRoom() {
   delete room.value.files
   delete room.value.previewImages
 
-  createRoom(room.value, route.query.contentid)
+  updateRoomApi(id, room.value ,contentid);
+  router.push({path: '/rooms'})
+  window.scrollTo({top: 0, behavior: 'smooth'})
 }
 
 // 여러 파일 선택
@@ -300,10 +339,10 @@ function onFilesChange(e, room) {
 .add-room {
   margin: 24px 0;
   padding: 20px;
-  border: 2px dashed #2563eb;
+  border: 2px dashed #33be7b;
   border-radius: 10px;
   background: #f9fbff;
-  color: #2563eb;
+  color: #33be7b;
   font-weight: 600;
   font-size: 15px;
   text-align: center;
@@ -315,7 +354,7 @@ function onFilesChange(e, room) {
   gap: 8px;
 }
 .add-room:hover {
-  background: #2563eb;
+  background: #33be7b;
   color: #fff;
   transform: translateY(-2px);
   box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);

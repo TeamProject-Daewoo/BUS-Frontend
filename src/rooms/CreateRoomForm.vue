@@ -108,7 +108,7 @@
             </div>
 
             <!-- 이미지가 없을 때 -->
-            <div v-if="room.previewImages.length === 0" class="placeholder big">
+            <div v-if="!room.previewImages || room.previewImages.length === 0" class="placeholder big">
               아직 업로드된 이미지가 없습니다.
             </div>
           </div>
@@ -129,6 +129,7 @@
 
 <script setup>
 import { createRoom } from '@/api/business';
+import router from '@/router';
 import { uploadToS3 } from '@/utils/s3Uploader';
 import { ref } from 'vue';
 import { useRoute } from 'vue-router';
@@ -169,6 +170,7 @@ const room = ref(createNewRoomSchema());
 
 // 객실 추가
 async function addRoom() {
+   if(!room.value.files) return;
   const uploadedUrls = await Promise.all(
     room.value.files.slice(0, 5).map(file => uploadToS3(file))
   )
@@ -179,6 +181,8 @@ async function addRoom() {
   delete room.value.previewImages
 
   createRoom(room.value, route.query.contentid)
+  router.push({path: '/rooms'})
+  window.scrollTo({top: 0, behavior: 'smooth'})
 }
 
 // 여러 파일 선택

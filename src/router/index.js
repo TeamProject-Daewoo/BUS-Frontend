@@ -30,8 +30,8 @@ const routes = [
   { path: '/dashboard',   name: 'dashboard',       component: DashboardView,    meta: { requiresAuth: true, requiresHotel: true } },
   { path: '/reservations',name: 'reservations',    component: ReservationsView, meta: { requiresAuth: true, requiresHotel: true } },
   { path: '/rooms',       name: 'rooms',           component: RoomsView,        meta: { requiresAuth: true, requiresHotel: true } },
-  { path: '/rooms/new',       name: 'newrooms',    component: CreateRoomForm,   meta: { requiresAuth: true, requiresHotel: true } },
-  { path: '/rooms/edit',       name: 'editrooms',    component: EditRoomForm,   meta: { requiresAuth: true, requiresHotel: true } },
+  { path: '/rooms/new',   name: 'newrooms',        component: CreateRoomForm,   meta: { requiresAuth: true, requiresHotel: true } },
+  { path: '/rooms/edit',  name: 'editrooms',       component: EditRoomForm,     meta: { requiresAuth: true, requiresHotel: true } },
   
   { path: '/reviews',       name: 'reviews',       component: ReviewsView,      meta: { requiresAuth: true, requiresHotel: true } },
 
