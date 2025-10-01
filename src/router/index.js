@@ -73,7 +73,7 @@ function handleNavigation(to, from, next) {
   if (to.meta.requiresAuth && !isLoggedIn) {
     const uiStore = useUiStore();
     uiStore.openModal('로그인이 필요한 서비스입니다.')
-    return next({ name: 'Home', query: { redirect: to.fullPath } })
+    return next('/');
   }
   
   // B. 비로그인 상태여야 하는 페이지인데, 로그인한 경우

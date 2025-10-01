@@ -8,7 +8,7 @@ const s3Client = axios.create()
 // Presign → Upload → Public URL 반환
 export async function uploadToS3(file) {
   // 1) presigned URL 요청: 백엔드 인스턴스(api) 사용! (프록시 없어도 OK)
-  const { data } = await api.get('/business/s3/presign', {
+  const { data } = await api.get('/api/business/s3/presign', {
     params: { filename: file.name, contentType: file.type }
   })
 
