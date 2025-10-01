@@ -131,7 +131,7 @@ async function savePriceOverrides() {
     return;
   }
   try {
-    await api.post('/business/prices/override', {
+    await api.post('/api/business/prices/override', {
       title: overrideData.title,
       startDate: overrideData.startDate,
       endDate: overrideData.endDate,
