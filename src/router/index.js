@@ -15,6 +15,7 @@ import { useUiStore } from '@/stores/commonUiStore';
 import { useAuthStore } from '@/api/auth'
 import { useHotelStore } from '@/stores/hotel'
 import ReviewsView from '@/views/ReviewsView.vue'
+import RoomStep from "@/components/HotelCreate/RoomStep.vue";
 
 const routes = [
   { path: '/',            name: 'Home',            component: MainLandingPage,  meta: { layout: 'EmptyLayout' } },
@@ -31,7 +32,7 @@ const routes = [
   { path: '/settings/new',          name: 'settings-create', component: HotelCreateView,  meta: { requiresAuth: true } },
   { path: '/settings/:contentid',   name: 'settings-edit',   component: SettingsView,     props: true, meta: { requiresAuth: true } },
   { path: '/setprice',              name: 'SpecialPriceEditor', component: SpecialPriceEditor, props: true, meta: { requiresAuth: true, requiresHotel: true } },
-
+  { path: '/rooms/new', name: 'RoomStep', component: RoomStep, meta: { requiresAuth: true, requiresHotel: true } },
   { path: '/mypage',      name: 'mypage',          component: MypageView },
 ]
 
