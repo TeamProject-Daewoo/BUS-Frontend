@@ -164,6 +164,7 @@ function addRoom() {
     previewImages: [],  // 미리보기 blob URL
     images: []          // 업로드 후 S3 URL
   })
+
 }
 
 // 여러 파일 선택

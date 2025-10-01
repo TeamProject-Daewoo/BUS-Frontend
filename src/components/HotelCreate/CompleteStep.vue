@@ -34,6 +34,7 @@ import { ref } from 'vue'
 import { uploadToS3 } from '@/utils/s3Uploader'
 import { registerHotel } from '@/api/business'
 import { useUiStore } from '@/stores/commonUiStore';
+import router from '@/router';
 
 const uiStore = useUiStore();
 
@@ -88,6 +89,7 @@ async function submitAll() {
   } finally {
     submitting.value = false
   }
+  router.push('/dashboard');
 }
 </script>
 
