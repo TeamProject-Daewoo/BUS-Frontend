@@ -105,7 +105,7 @@ function toggleMore(id) { moreOpen.value = moreOpen.value === id ? null : id }
 let editing = ref(null)
 async function deleteReservation(r) {
   moreOpen.value = null
-  if(confirm('정말로 삭제 하시겠습니까?')) {
+  if(confirm('정말로 취소 하시겠습니까?')) {
     const response = await api.post('/api/payment/cancel', {
        reservationId: r.reservationId,
        cancelReason: '고객 요청'

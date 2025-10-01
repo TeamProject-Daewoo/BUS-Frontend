@@ -13,7 +13,7 @@
         <th style="width:130px">체크아웃</th>
         <th style="width:160px">예약일시</th>
         <th style="width:110px">예약 상태</th>
-        <th style="width:56px"></th>
+        <th style="width:56px;">관리</th>
       </tr>
     </thead>
 
@@ -48,17 +48,8 @@
             {{ r.statusLabel }}
           </span>
         </td>
-
-        <!-- 더보기 -->
-        <td class="more">
-          <div class="more-wrap">
-            <button class="btn-more" @click="$emit('toggle-more', r.reservationId)">⋯</button>
-            <transition name="fade-slide">
-              <div v-if="moreOpen === r.reservationId" class="dropdown">
-                <button class="dropdown-item" @click="$emit('delete', r)">삭제</button>
-              </div>
-            </transition>
-          </div>
+        <td style="padding-left: 8px;">
+          <button :disabled="currentDate >= r.checkInDate || r.statusType!=='active'" class="cancel-btn" @click="$emit('delete', r)">취소</button>
         </td>
       </tr>
 
@@ -68,17 +59,19 @@
 </template>
 
 <script setup>
+const today = new Date();
+const currentDate = today.toJSON().slice(0, 10);
+
 const props = defineProps({
   rows: { type: Array, default: () => [] },
   allChecked: { type: Boolean, default: false },
   checkedSet: { type: Object, required: true }, // Set
-  moreOpen: { type: [String, Number, null], default: null },
   dt: { type: Function, required: true },
   formatDateTime: { type: Function, required: true },
   resolvedRoomTitle: { type: Function, required: true },
   titleTooltip: { type: Function, required: true }
 })
-defineEmits(['toggle', 'toggle-all', 'toggle-more', 'edit'])
+defineEmits(['toggle', 'toggle-all', 'edit'])
 
 // local helpers (원본 유틸 그대로 동작)
 function initials(name){ const v=(name||'').trim(); if(!v) return '—'; const parts=v.split(/\s+/); return (parts[0][0]||'')+(parts[1]?.[0]||'') }
@@ -108,12 +101,10 @@ tbody tr:hover td { background:#f8fafc; }
 
 .id { color:var(--primary); font-weight:600; }
 
-.more-wrap { position: relative; display: inline-block; }
-.btn-more { background:none; border:1px solid transparent; font-size:18px; cursor:pointer; color:#6b7280; padding:4px 8px; border-radius:6px; }
-.btn-more:hover { background:#f1f5f9; border-color:#d1d5db; }
-.dropdown { position: absolute; right:0; top:32px; background:#fff; border:1px solid #e5e7eb; border-radius:8px; box-shadow: 0 4px 12px rgba(0,0,0,.08); display:flex; flex-direction:column; min-width:120px; z-index:1000; }
-.dropdown-item { padding:8px 12px; text-align:left; background:#fff; border:none; cursor:pointer; font-size:14px; }
-.dropdown-item:hover { background:#f9fafb; }
+.cancel { text-align: left; justify-content: start;}
+.cancel-btn { padding:4px 8px; text-align:left; background:#fff; border:none; cursor:pointer; font-size:14px; border: 1px solid rgb(157, 157, 157); border-radius: 50px;}
+.cancel-btn:hover { background:#f9fafb; }
+.cancel-btn:disabled { cursor: default; border: 1px solid rgb(210, 210, 210);}
 
 .room-name { font-weight:600; }
 
