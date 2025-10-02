@@ -4,12 +4,12 @@
 
     <div class="toolbar" v-if="store.selectedContentId">
       <button class="btn" @click="goCreate">객실 추가</button>
+      
     </div>
 
     <div class="hint" v-if="!store.selectedContentId">
       사이드바 또는 <RouterLink to="/hotels">호텔 선택</RouterLink>에서 호텔을 먼저 선택하세요.
     </div>
-
     <div v-else>
       <!-- 카드 그리드 (4열) -->
       <div class="room-grid">
@@ -65,7 +65,7 @@
 
             <!-- 버튼 묶음 -->
             <div class="action-buttons">
-              <button class="btn-outline" @click="edit(r)">수정</button>
+              <button class="btn-outline" @click="goEdit(r)">수정</button>
               <button class="btn-danger" @click="remove(r.id)">삭제</button>
             </div>
           </div>
@@ -126,6 +126,7 @@ import { RouterLink, useRouter } from 'vue-router'
 import { useHotelStore } from '@/stores/hotel'
 import { getRooms, updateRoomApi, deleteRoomApi } from '@/api/business'
 import { useUiStore } from '@/stores/commonUiStore';
+import CreateRoomForm from '@/rooms/CreateRoomForm.vue';
 
 const uiStore = useUiStore();
 const router = useRouter()
@@ -141,7 +142,7 @@ const mainByRoomId = reactive({})  // 객실 ID별로 대표 이미지를 저장
 
 // 객실 수정 페이지로 이동
 function goEdit(r) {
-  router.push({ path: `/rooms/edit/${r.id}`, query: { contentid: store.selectedContentId } })
+  router.push({ path: `/rooms/edit`, query: { id:r.id, contentid:store.selectedContentId } })
 }
 
 // 추가 페이지로 이동
@@ -155,6 +156,7 @@ onMounted(loadOnMount)
 watch(() => store.selectedContentId, loadOnMount)
 
 async function loadOnMount() {
+  console.log()
   if (!store.selectedContentId) { rooms.value = [] } 
   else await load()
 }

@@ -15,7 +15,11 @@ import { useUiStore } from '@/stores/commonUiStore';
 import { useAuthStore } from '@/api/auth'
 import { useHotelStore } from '@/stores/hotel'
 import ReviewsView from '@/views/ReviewsView.vue'
+
 import RoomStep from "@/components/HotelCreate/RoomStep.vue";
+import RreateRoomForm from '@/rooms/CreateRoomForm.vue'
+import CreateRoomForm from '@/rooms/CreateRoomForm.vue'
+import EditRoomForm from '@/rooms/EditRoomForm.vue'
 
 const routes = [
   { path: '/',            name: 'Home',            component: MainLandingPage,  meta: { layout: 'EmptyLayout' } },
@@ -26,13 +30,15 @@ const routes = [
   { path: '/dashboard',   name: 'dashboard',       component: DashboardView,    meta: { requiresAuth: true, requiresHotel: true } },
   { path: '/reservations',name: 'reservations',    component: ReservationsView, meta: { requiresAuth: true, requiresHotel: true } },
   { path: '/rooms',       name: 'rooms',           component: RoomsView,        meta: { requiresAuth: true, requiresHotel: true } },
+  { path: '/rooms/new',   name: 'newrooms',        component: CreateRoomForm,   meta: { requiresAuth: true, requiresHotel: true } },
+  { path: '/rooms/edit',  name: 'editrooms',       component: EditRoomForm,     meta: { requiresAuth: true, requiresHotel: true } },
+  
   { path: '/reviews',       name: 'reviews',       component: ReviewsView,      meta: { requiresAuth: true, requiresHotel: true } },
 
   { path: '/settings',              name: 'settings-list',   component: HotelsSelectView, meta: { requiresAuth: true, requiresHotel: true } },
   { path: '/settings/new',          name: 'settings-create', component: HotelCreateView,  meta: { requiresAuth: true } },
   { path: '/settings/:contentid',   name: 'settings-edit',   component: SettingsView,     props: true, meta: { requiresAuth: true } },
   { path: '/setprice',              name: 'SpecialPriceEditor', component: SpecialPriceEditor, props: true, meta: { requiresAuth: true, requiresHotel: true } },
-  { path: '/rooms/new', name: 'RoomStep', component: RoomStep, meta: { requiresAuth: true, requiresHotel: true } },
   { path: '/mypage',      name: 'mypage',          component: MypageView },
 ]
 
