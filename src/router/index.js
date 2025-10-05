@@ -65,14 +65,14 @@ router.beforeEach((to, from, next) => {
 })
 
 // 실제 네비게이션 규칙을 처리하는 함수
-function handleNavigation(to, from, next) {
+async function handleNavigation(to, from, next) {
   const authStore = useAuthStore()
   const hotelStore = useHotelStore()
   const isLoggedIn = !!authStore.accessToken // 👈 2. 함수 내에서 최신 로그인 상태 확인
 
   // 로그인 상태일 때만 호텔 정보 복원 시도
-  if (isLoggedIn && !hotelStore.hotels?.length) {
-    hotelStore.loadHotels() // hotelStore에 호텔 목록을 불러오는 액션
+  if (isLoggedIn && !hotelStore.isLoaded) {
+    await hotelStore.loadHotels() // hotelStore에 호텔 목록을 불러오는 액션
   }
   
   // A. 로그인이 필요한 페이지인데, 로그인하지 않은 경우
