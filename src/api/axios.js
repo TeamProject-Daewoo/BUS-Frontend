@@ -3,7 +3,7 @@ import axios from 'axios'
 import { useAuthStore } from '@/api/auth'
 
 const api = axios.create({
-  baseURL: 'busienss',
+  baseURL: '/busienss',
   headers: { 'Content-Type': 'application/json' },
   withCredentials: true, // refreshToken 쿠키 전송
 })
