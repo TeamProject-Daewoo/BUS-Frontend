@@ -130,16 +130,21 @@ const submitUpdate = async () => {
 };
 
 const withdraw = async () => {
-  if (confirm("정말 탈퇴하시겠습니까? 모든 정보가 삭제되며 복구할 수 없습니다.")) {
-    try {
-      await apiClient.delete('/api/mypage/member');
-      uiStore.openModal({title: "회원 탈퇴가 완료되었습니다."});
-      authStore.clearToken(); // 토큰 정리
-      router.push('/login');
-    } catch (error) {
-      console.error("회원 탈퇴에 실패했습니다.", error);
-      uiStore.openModal({title:"회원 탈퇴 중 오류가 발생했습니다."});
-    }
+  await uiStore.openModal({
+    title: '회원 탈퇴',
+    message: "정말 탈퇴하시겠습니까? 모든 정보가 삭제되며 복구할 수 없습니다.",
+    showCancel: true,
+    confirmText: '탈퇴',
+    cancelText: '취소'
+  });
+  try {
+    await apiClient.delete('/api/mypage/member');
+    uiStore.openModal({title: "회원 탈퇴가 완료되었습니다."});
+    authStore.clearToken(); // 토큰 정리
+    router.push('/login');
+  } catch (error) {
+    console.error("회원 탈퇴에 실패했습니다.", error);
+    uiStore.openModal({title:"회원 탈퇴 중 오류가 발생했습니다."});
   }
 };
 

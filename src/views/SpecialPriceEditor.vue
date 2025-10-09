@@ -167,10 +167,13 @@ async function savePriceOverrides() {
 
 async function deleteOverride(overrideToDelete) {
   // 사용자에게 다시 한번 확인 받기
-  const confirmed = confirm(`'${overrideToDelete.title}' 특별가 설정을 정말 삭제하시겠습니까?`);
-  if (!confirmed) {
-    return;
-  }
+  await uiStore.openModal({
+    title: '특별가 삭제',
+    message: `'${overrideToDelete.title}' 특별가 설정을 정말 삭제하시겠습니까?`,
+    showCancel: true,
+    confirmText: '삭제',
+    cancelText: '취소'
+  });
 
   try {
     // 백엔드에 삭제 API를 호출합니다.

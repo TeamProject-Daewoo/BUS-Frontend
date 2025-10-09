@@ -55,11 +55,13 @@
 
 <script setup>
 import api from "@/api/axios";
+import { useUiStore } from "@/stores/commonUiStore";
 import { useHotelStore } from "@/stores/hotel";
 import { debounce } from "lodash";
 import { storeToRefs } from "pinia";
 import { computed, onMounted, ref, watch } from "vue";
 
+const uiStore = useUiStore();
 const deletedList = ref(false);
 const reviewList = ref([]);
 const searchTerm = ref('');
@@ -124,33 +126,43 @@ const formatDate = (dateString) => {
 };
 
 const report = async (id) => {
-  if (confirm(`정말로 ID: ${id} 리뷰를 신고 하시겠습니까?`)) {
-    alert(`ID: ${id} 리뷰를 신고 하었습니다.`);
-    await api.get(`/api/reviews/report/${id}`, {
-        params: {
-          isReport: true
-        }
+  await uiStore.openModal({
+    title: '리뷰 신고',
+    message: `정말로 ID: ${id} 리뷰를 신고 하시겠습니까?`,
+    showCancel: true,
+    confirmText: '신고',
+    cancelText: '취소'
+  });
+  uiStore.openModal({title:`ID: ${id} 리뷰를 신고 하었습니다.`});
+  await api.get(`/api/reviews/report/${id}`, {
+      params: {
+        isReport: true
       }
-    );
-    fetchReviews();
-   }
+    }
+  );
+  fetchReviews();
 };
 const reportAll = async () => {
   if (selectedReviews.value.length === 0) {
-      alert("하나 이상의 신고할 항목을 선택해주세요.");
-      return; 
+    uiStore.openModal({title:"하나 이상의 신고할 항목을 선택해주세요."});
+    return; 
   }
-  if (confirm(`정말로 선택한 항목들을 신고하시겠습니까?`)) {
-    alert(`선택한 모든 리뷰가 신고되었습니다.`);
-    await api.get(`/api/reviews/reportAll`, {
-      params: {
-        reviews: selectedReviews.value,
-        isReport: true
-      }
-    });
-    fetchReviews();
-    selectedReviews.value = [];
-  } 
+  await uiStore.openModal({
+    title: '리뷰 신고',
+    message: `정말로 선택한 항목들을 신고하시겠습니까?`,
+    showCancel: true,
+    confirmText: '신고',
+    cancelText: '취소'
+  });
+  uiStore.openModal({title:`선택한 모든 리뷰가 신고되었습니다.`});
+  await api.get(`/api/reviews/reportAll`, {
+    params: {
+      reviews: selectedReviews.value,
+      isReport: true
+    }
+  });
+  fetchReviews();
+  selectedReviews.value = [];
 }
 
 const selectedReviews = ref([]);
