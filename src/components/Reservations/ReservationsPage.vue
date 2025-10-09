@@ -36,6 +36,7 @@
         :all-checked="allChecked"
         :checked-set="checked"
         :more-open="moreOpen"
+        :isCancelling="isCancelling"
         :dt="dt"
         :format-date-time="formatDateTime"
         :resolved-room-title="resolvedRoomTitle"
@@ -69,7 +70,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, reactive } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useHotelStore } from '@/stores/hotel'
 import { getReservations, getRooms, bulkReservations, updateReservation } from '@/api/business'
@@ -103,14 +104,23 @@ function toggleMore(id) { moreOpen.value = moreOpen.value === id ? null : id }
 
 // 삭제 모달
 let editing = ref(null)
+const isCancelling = reactive({});
 async function deleteReservation(r) {
   moreOpen.value = null
   if(confirm('정말로 취소 하시겠습니까?')) {
-    const response = await api.post('/api/payment/cancel', {
-       reservationId: r.reservationId,
-       cancelReason: '고객 요청'
-    });
-    loadRooms();
+    isCancelling[r.reservationId] = true; 
+    try {
+      const response = await api.post('/api/payment/cancel', {
+          reservationId: r.reservationId,
+          cancelReason: '고객 요청'
+      });
+      await loadReservations(); 
+    } catch (error) {
+        console.error("예약 취소 실패:", error);
+        alert('예약 취소에 실패했습니다. 잠시 후 다시 시도해 주세요.');
+    } finally {
+        isCancelling[r.reservationId] = false;
+    }
   }
 }
 async function saveEdit(form) {
