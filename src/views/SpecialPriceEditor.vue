@@ -178,7 +178,7 @@ async function deleteOverride(overrideToDelete) {
   try {
     // 백엔드에 삭제 API를 호출합니다.
     // id만 보내는 것보다 그룹을 식별할 수 있는 정보를 보내는 것이 더 안전합니다.
-    await api.delete('/business/prices/delete', {
+    await api.delete('/api/business/prices/delete', {
       data: {
         title: overrideToDelete.title,
         startDate: overrideToDelete.startDate,
