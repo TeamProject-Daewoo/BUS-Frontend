@@ -3,7 +3,7 @@ import axios from 'axios'
 import { useAuthStore } from '@/api/auth'
 
 const api = axios.create({
-  baseURL: '/business',
+  baseURL: import.meta.env.VITE_BACK_ADMIN_URL,
   headers: { 'Content-Type': 'application/json' },
   withCredentials: true, // refreshToken 쿠키 전송
 })

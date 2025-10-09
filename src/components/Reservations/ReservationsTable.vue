@@ -8,7 +8,6 @@
         <th style="width:160px">객실</th>
         <th style="width:130px">연락처</th>
         <th style="width:100px">성인</th>
-        <th style="width:100px">어린이</th>
         <th style="width:130px">체크인</th>
         <th style="width:130px">체크아웃</th>
         <th style="width:160px">예약일시</th>
@@ -37,19 +36,30 @@
         <!-- 연락처 -->
         <td>{{ r.userPhone || r.reservPhone || '-' }}</td>
         <td>{{ r.numAdults ?? '-' }}</td>
-        <td>{{ r.numChildren ?? '-' }}</td>
         <td>{{ dt(r.checkInDate) }}</td>
         <td>{{ dt(r.checkOutDate) }}</td>
         <td>{{ formatDateTime(r.reservationDate) }}</td>
 
         <!-- 예약 상태 -->
         <td>
-          <span class="badge" :class="{ success: r.statusType==='active', warning: r.statusType==='pending', danger: r.statusType==='cancel' }">
-            {{ r.statusLabel }}
+          <span 
+            class="badge"
+            :class="{ 
+            warning: isCancelling[r.reservationId] || r.statusType === 'pending', 
+            success: !isCancelling[r.reservationId] && r.statusType==='active', 
+            danger: !isCancelling[r.reservationId] && r.statusType==='cancel',
+          }">
+            {{ isCancelling[r.reservationId] ? '취소 중..' : r.statusLabel }}
           </span>
         </td>
         <td style="padding-left: 8px;">
-          <button :disabled="currentDate >= r.checkInDate || r.statusType!=='active'" class="cancel-btn" @click="$emit('delete', r)">취소</button>
+          <button 
+            :disabled="currentDate >= r.checkInDate || r.statusType!=='active' || isCancelling[r.reservationId]" 
+            class="cancel-btn" 
+            @click="$emit('delete', r)"
+          >
+            {{ isCancelling[r.reservationId] ? '처리 중' : '취소' }}
+          </button>
         </td>
       </tr>
 
@@ -69,7 +79,8 @@ const props = defineProps({
   dt: { type: Function, required: true },
   formatDateTime: { type: Function, required: true },
   resolvedRoomTitle: { type: Function, required: true },
-  titleTooltip: { type: Function, required: true }
+  titleTooltip: { type: Function, required: true },
+  isCancelling: { type: Object }
 })
 defineEmits(['toggle', 'toggle-all', 'edit'])
 
