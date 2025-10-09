@@ -133,7 +133,7 @@ const checkUsername = async () => {
   const username = formData.user_name;
 
   if (!username) {
-    uiStore.openModal('아이디 입력 필요', '아이디를 입력해주세요.');
+    uiStore.openModal({title:'아이디 입력 필요', message:'아이디를 입력해주세요.'});
     return;
   }
 
@@ -143,12 +143,12 @@ const checkUsername = async () => {
   const hasNumber = /[0-9]/.test(username);  // 3. 숫자가 포함되었는가
 
   if (!regex.test(username)) {
-    uiStore.openModal('아이디 형식 오류', '아이디는 5~20자의 영어와 숫자로 구성되어야 합니다.');
+    uiStore.openModal({title:'아이디 형식 오류', message:'아이디는 5~20자의 영어와 숫자로 구성되어야 합니다.'});
     return;
   }
 
   if (!hasLetter) {
-    uiStore.openModal('아이디 규칙 오류', '아이디는 영어를 반드시 포함해야 합니다.');
+    uiStore.openModal({title:'아이디 규칙 오류', message:'아이디는 영어를 반드시 포함해야 합니다.'});
     return;
   }
   
@@ -256,19 +256,19 @@ const hasIncompleteKorean = (name) => {
 // --- 회원가입 제출 ---
 const handleRegister = async () => {
   if (!isFormValid.value) {
-    uiStore.openModal('모든 입력 항목을 올바르게 채우고 약관에 동의해주세요.');
+    uiStore.openModal({title:'모든 입력 항목을 올바르게 채우고 약관에 동의해주세요.'});
     return;
   }
 
    // 👇 [추가] 사업자 이름 검사
    if (hasIncompleteKorean(formData.name)) {
-    uiStore.openModal('입력 오류', '사업자 이름에 완성되지 않은 한글(자음/모음)을 사용할 수 없습니다.');
+    uiStore.openModal({title:'입력 오류', message:'사업자 이름에 완성되지 않은 한글(자음/모음)을 사용할 수 없습니다.'});
     return;
   }
 
   // 👇 [추가] 휴대폰 번호 검사 (하이픈 없는 rawPhone으로 검사)
   if (!isValidPhoneNumber(formData.rawPhone)) {
-    uiStore.openModal('입력 오류', "휴대폰 번호는 '010'으로 시작하는 11자리 숫자여야 합니다.");
+    uiStore.openModal({title:'입력 오류', message:"휴대폰 번호는 '010'으로 시작하는 11자리 숫자여야 합니다."});
     return;
   }
   
@@ -282,10 +282,10 @@ const handleRegister = async () => {
         role: formData.role
     });
 
-    uiStore.openModal('승인 요청 완료','승인 요청이 완료되었습니다. 관리자의 승인을 기다려주세요.');
+    uiStore.openModal({title:'승인 요청 완료',message:'승인 요청이 완료되었습니다. 관리자의 승인을 기다려주세요.'});
   } catch (error) {
     console.error('회원가입 실패:', error);
-    uiStore.openModal(error.response?.data || '회원가입 중 오류가 발생했습니다.');
+    uiStore.openModal({title:'회원가입 중 오류가 발생했습니다.'});
   }
 };
 </script>

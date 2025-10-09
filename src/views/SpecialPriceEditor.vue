@@ -127,7 +127,7 @@ onMounted(async () => {
 // 특별가 저장 함수
 async function savePriceOverrides() {
   if (!isFormValid.value) {
-    uiStore.openModal('모든 정보를 올바르게 입력해주세요.');
+    uiStore.openModal({title:'모든 정보를 올바르게 입력해주세요.'});
     return;
   }
   try {
@@ -138,7 +138,7 @@ async function savePriceOverrides() {
       priceOverrides: overrideData.prices,
       hotelContentId: hotelStore.selectedContentId
     });
-    uiStore.openModal('특별가 설정이 저장되었습니다.');
+    uiStore.openModal({title:'특별가 설정이 저장되었습니다.'});
     
     // 저장 후 목록을 새로고침합니다.
     await fetchPriceOverrides();
@@ -157,10 +157,10 @@ async function savePriceOverrides() {
     // Axios 에러에 서버 응답(response)이 있는지 확인
     if (error.response) {
       // 서버가 보낸 에러 메시지(예: "선택하신 기간에 이미...")를 alert으로 표시
-      uiStore.openModal("선택하신 기간에 이미 다른 특별가가 설정되어 있습니다"); 
+      uiStore.openModal({title:"선택하신 기간에 이미 다른 특별가가 설정되어 있습니다"}); 
     } else {
       // 서버 응답 없이 네트워크 에러 등이 발생한 경우
-      uiStore.openModal('저장 중 오류가 발생했습니다.');
+      uiStore.openModal({title:'저장 중 오류가 발생했습니다.'});
     }
   }
 };
@@ -184,14 +184,14 @@ async function deleteOverride(overrideToDelete) {
       }
     });
     
-    uiStore.openModal('삭제되었습니다.');
+    uiStore.openModal({title:'삭제되었습니다.'});
     
     // 목록을 새로고침하여 UI에 반영
     await fetchPriceOverrides();
 
   } catch (error) {
     console.error('특별가 삭제 실패:', error);
-    uiStore.openModal('삭제 중 오류가 발생했습니다.');
+    uiStore.openModal({title:'삭제 중 오류가 발생했습니다.'});
   }
 }
 </script>

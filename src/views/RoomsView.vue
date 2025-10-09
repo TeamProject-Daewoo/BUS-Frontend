@@ -174,7 +174,7 @@ async function adjustRoomCount(r, delta) {
     console.log('roomcount 업데이트 성공:', newValue)
   } catch (e) {
     console.error('roomcount 업데이트 실패', e)
-    uiStore.openModal('객실 수 업데이트 실패')
+    uiStore.openModal({title:'객실 수 업데이트 실패'})
   }
 }
 

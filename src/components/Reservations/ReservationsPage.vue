@@ -139,12 +139,12 @@ async function saveEdit(form) {
       paymentId: form.paymentId
     })
 
-    uiStore.openModal('수정 완료')
+    uiStore.openModal({title:'수정 완료'})
     editing.value = null
     await loadReservations()
   } catch (e) {
     console.error(e)
-    uiStore.openModal('수정 실패')
+    uiStore.openModal({title:'수정 실패'})
   }
 }
 
@@ -287,11 +287,11 @@ async function applyBulk() {
   const ids = Array.from(checked.value)
   try {
     await bulkReservations(scope.value === 'single' ? store.selectedContentId : null, ids, bulk.value)
-    uiStore.openModal('일괄 작업이 완료되었습니다.')
+    uiStore.openModal({title:'일괄 작업이 완료되었습니다.'})
     await loadReservations()
   } catch (e) {
     console.error(e)
-    uiStore.openModal('일괄 작업 실패')
+    uiStore.openModal({title:'일괄 작업 실패'})
   }
   checked.value.clear()
   bulk.value = ''

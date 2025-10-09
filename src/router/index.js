@@ -78,7 +78,7 @@ async function handleNavigation(to, from, next) {
   // A. 로그인이 필요한 페이지인데, 로그인하지 않은 경우
   if (to.meta.requiresAuth && !isLoggedIn) {
     const uiStore = useUiStore();
-    uiStore.openModal('로그인이 필요한 서비스입니다.')
+    uiStore.openModal({title:'로그인이 필요한 서비스입니다.'})
     return next('/');
   }
   
