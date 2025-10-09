@@ -174,7 +174,7 @@ async function adjustRoomCount(r, delta) {
     console.log('roomcount 업데이트 성공:', newValue)
   } catch (e) {
     console.error('roomcount 업데이트 실패', e)
-    uiStore.openModal('객실 수 업데이트 실패')
+    uiStore.openModal({title:'객실 수 업데이트 실패'})
   }
 }
 
@@ -205,7 +205,14 @@ async function save() {
 }
 
 async function remove(id) {
-  if (!confirm('삭제할까요?')) return
+  await uiStore.openModal({
+    title: '객실 삭제',
+    message: '정말 삭제하시겠습니까?',
+    showCancel: true,
+    confirmText: '삭제',
+    cancelText: '취소'
+  });
+  uiStore.openModal({title:"삭제되었습니다"})
   try {
     await deleteRoomApi(id, store.selectedContentId)
     await load()

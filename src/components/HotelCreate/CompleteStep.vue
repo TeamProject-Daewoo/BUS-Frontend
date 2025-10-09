@@ -81,11 +81,11 @@ async function submitAll() {
     const res = await registerHotel(payload)
     console.log('[REGISTER SUCCESS]', res.data)
 
-    uiStore.openModal('등록이 완료되었습니다!')
+    uiStore.openModal({title:'등록이 완료되었습니다!'})
   } catch (err) {
     console.error('[REGISTER FAIL]', err)
     const msg = err.response?.data || err.message || '알 수 없는 오류'
-    uiStore.openModal(`등록 중 오류 발생: ${msg}`)
+    uiStore.openModal({title: '등록 중 오류 발생', message:`${msg}`})
   } finally {
     submitting.value = false
   }

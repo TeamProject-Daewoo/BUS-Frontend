@@ -107,20 +107,25 @@ let editing = ref(null)
 const isCancelling = reactive({});
 async function deleteReservation(r) {
   moreOpen.value = null
-  if(confirm('정말로 취소 하시겠습니까?')) {
-    isCancelling[r.reservationId] = true; 
-    try {
-      const response = await api.post('/api/payment/cancel', {
-          reservationId: r.reservationId,
-          cancelReason: '고객 요청'
-      });
-      await loadReservations(); 
-    } catch (error) {
-        console.error("예약 취소 실패:", error);
-        alert('예약 취소에 실패했습니다. 잠시 후 다시 시도해 주세요.');
-    } finally {
-        isCancelling[r.reservationId] = false;
-    }
+  await uiStore.openModal({
+    title: '예약 취소',
+    message: '정말로 예약을 취소 하시겠습니까?',
+    showCancel: true,
+    confirmText: '예',
+    cancelText: '아니요'
+  });
+  isCancelling[r.reservationId] = true; 
+  try {
+    const response = await api.post('/api/payment/cancel', {
+        reservationId: r.reservationId,
+        cancelReason: '고객 요청'
+    });
+    await loadReservations(); 
+  } catch (error) {
+      console.error("예약 취소 실패:", error);
+      uiStore.openModal({title:"취소 실패", message:'잠시 후 다시 시도해 주세요.'});
+  } finally {
+      isCancelling[r.reservationId] = false;
   }
 }
 async function saveEdit(form) {
@@ -139,12 +144,12 @@ async function saveEdit(form) {
       paymentId: form.paymentId
     })
 
-    uiStore.openModal('수정 완료')
+    uiStore.openModal({title:'수정 완료'})
     editing.value = null
     await loadReservations()
   } catch (e) {
     console.error(e)
-    uiStore.openModal('수정 실패')
+    uiStore.openModal({title:'수정 실패'})
   }
 }
 
@@ -287,11 +292,11 @@ async function applyBulk() {
   const ids = Array.from(checked.value)
   try {
     await bulkReservations(scope.value === 'single' ? store.selectedContentId : null, ids, bulk.value)
-    uiStore.openModal('일괄 작업이 완료되었습니다.')
+    uiStore.openModal({title:'일괄 작업이 완료되었습니다.'})
     await loadReservations()
   } catch (e) {
     console.error(e)
-    uiStore.openModal('일괄 작업 실패')
+    uiStore.openModal({title:'일괄 작업 실패'})
   }
   checked.value.clear()
   bulk.value = ''

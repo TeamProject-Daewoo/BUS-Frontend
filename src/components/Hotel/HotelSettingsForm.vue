@@ -158,10 +158,10 @@ async function saveBasic() {
       mapy: basic.value.mapy,
     }
     await updateHotel(payload, props.contentid)
-    uiStore.openModal('기본 정보 저장 완료')
+    uiStore.openModal({title: '기본 정보 저장 완료'})
   } catch (e) {
     console.error('PUT /business/hotel 실패', e)
-    uiStore.openModal('기본 정보 저장에 실패했어요.')
+    uiStore.openModal({title: '기본 정보 저장에 실패했어요.'})
   } finally {
     saving.value.basic = false
   }
@@ -171,10 +171,10 @@ async function saveIntro() {
   try {
     saving.value.intro = true
     await upsertHotelIntro({ ...intro.value }, props.contentid)
-    uiStore.openModal('소개/부대시설 저장 완료')
+    uiStore.openModal({title: '소개/부대시설 저장 완료'})
   } catch (e) {
     console.error('PUT /business/hotel/intro 실패', e)
-    uiStore.openModal('소개/부대시설 저장에 실패했어요.')
+    uiStore.openModal({title:'소개/부대시설 저장에 실패했어요.'})
   } finally {
     saving.value.intro = false
   }
