@@ -66,44 +66,58 @@
           <span v-if="d.isToday" class="pill today">오늘</span>
         </div>
 
-        <!-- 예약 칩: 1열, 기본 MAX_ITEMS개. +를 누르면 해당 날짜만 모두 펼침 -->
-        <transition-group
-          name="chiplist"
-          tag="div"
-          class="chips"
-          @click.stop
-        >
+        <!-- 예약 칩: 1열 -->
+        <transition-group name="chiplist" tag="div" class="chips" @click.stop>
           <div
             v-for="(b, idx) in visibleItems(d)"
-            :key="b.id || `${d.key}-${idx}`"
+            :key="b.id ?? `${d.key}-${b.customerName}-${b.email}-${idx}`"
             class="booking-chip"
             :class="{
               pending: b.statusType==='pending',
               cancel: b.statusType==='cancel',
               active: b.statusType==='active'
             }"
-            :title="`${b.customerName || '-'}${b.email ? ' · ' + b.email : ''}${b.roomTitle ? ' · ' + b.roomTitle : ''}`"
           >
             <span class="avatar" :style="{ background: avatarColor(b.customerName) }">
               {{ initials(b.customerName) }}
             </span>
+
+            <!-- 본문(말줄임) + 호버시 겹쳐서 전체 노출 패널 -->
             <span class="label">
-              <span class="name">{{ b.customerName || '-' }}</span>
-              <span v-if="b.email" class="email">{{ b.email }}</span>
-              <span v-if="b.roomTitle" class="room">{{ b.roomTitle }}</span>
+              <!-- ✨ 이름 클릭/키보드로 검색 트리거 -->
+              <span
+                class="name trunc actionable"
+                role="button"
+                tabindex="0"
+                @click.stop="onClickName(b.customerName)"
+                @keydown.enter.stop="onClickName(b.customerName)"
+                @keydown.space.stop.prevent="onClickName(b.customerName)"
+              >
+                {{ b.customerName || '-' }}
+              </span>
+
+              <span v-if="b.email" class="email trunc">{{ b.email }}</span>
+              <span v-if="b.roomTitle" class="room trunc">{{ b.roomTitle }}</span>
+
+              <!-- 호버용 전체 패널(레이아웃 영향 없음) -->
+              <div class="hover-reveal" aria-hidden="true">
+                <div class="line name-full">{{ b.customerName || '-' }}</div>
+                <div v-if="b.email" class="line email-full">{{ b.email }}</div>
+                <div v-if="b.roomTitle" class="line room-full">{{ b.roomTitle }}</div>
+              </div>
             </span>
           </div>
         </transition-group>
 
         <!-- 더보기 / 접기 -->
         <button
-          v-if="d.items.length > MAX_ITEMS || expanded.has(d.key)"
+          v-show="showMore(d)"
           class="more-chip"
           type="button"
           @click.stop="toggleExpand(d.key)"
-          :title="expanded.has(d.key) ? '접기' : `외 ${d.items.length - MAX_ITEMS}건 더 보기`"
+          :title="expanded.has(d.key) ? '접기' : `외 ${overflowCount(d)}건 더 보기`"
         >
-          {{ expanded.has(d.key) ? '접기' : `+${Math.max(0, d.items.length - MAX_ITEMS)}` }}
+          {{ expanded.has(d.key) ? '접기' : `+${overflowCount(d)}` }}
         </button>
 
         <!-- 선택 하이라이트 -->
@@ -129,7 +143,7 @@ const props = defineProps({
   /** 표시 월: "YYYY-MM" */
   month: { type: String, required: true }
 })
-const emit = defineEmits(['update:month', 'select-date'])
+const emit = defineEmits(['update:month', 'select-date', 'search-name'])
 
 /** 드롭다운 대신 큰 텍스트 타이틀을 쓰고 싶다면 true */
 const useTextMonthTitle = false
@@ -172,24 +186,11 @@ const years = computed(() => {
   return arr
 })
 
-function onYearChange(y) {
-  emit('update:month', `${y}-${pad2(monthNum.value)}`)
-}
-function onMonthChange(m) {
-  emit('update:month', `${year.value}-${pad2(m)}`)
-}
-function goPrev() {
-  const prev = addMonths(monthDate.value, -1)
-  emit('update:month', `${prev.getFullYear()}-${pad2(prev.getMonth() + 1)}`)
-}
-function goNext() {
-  const next = addMonths(monthDate.value, 1)
-  emit('update:month', `${next.getFullYear()}-${pad2(next.getMonth() + 1)}`)
-}
-function goToday() {
-  const t = new Date()
-  emit('update:month', `${t.getFullYear()}-${pad2(t.getMonth() + 1)}`)
-}
+function onYearChange(y) { emit('update:month', `${y}-${pad2(monthNum.value)}`) }
+function onMonthChange(m) { emit('update:month', `${year.value}-${pad2(m)}`) }
+function goPrev() { const prev = addMonths(monthDate.value, -1); emit('update:month', `${prev.getFullYear()}-${pad2(prev.getMonth()+1)}`) }
+function goNext() { const next = addMonths(monthDate.value, 1); emit('update:month', `${next.getFullYear()}-${pad2(next.getMonth()+1)}`) }
+function goToday(){ const t=new Date(); emit('update:month', `${t.getFullYear()}-${pad2(t.getMonth()+1)}`) }
 
 /* ===== Utilities for avatar ===== */
 function initials(name){
@@ -214,7 +215,6 @@ const dayStats = computed(() => {
     const e = new Date(r.checkOutDate || r.checkInDate)
     const start = s <= e ? s : e
     const end   = s <= e ? e : s
-
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
       const key = toYmd(d)
       map[key] ||= { total: 0, pending: 0, cancel: 0, items: [] }
@@ -222,7 +222,6 @@ const dayStats = computed(() => {
       const st = (r.statusType || '').toLowerCase()
       if (st === 'pending') map[key].pending++
       if (st === 'cancel')  map[key].cancel++
-
       map[key].items.push({
         id: r.reservationId,
         customerName: r.customerName || r.userDisplayName || r.userName || '-',
@@ -246,7 +245,7 @@ const dayStats = computed(() => {
 })
 
 /* ===== Grid / expand handling ===== */
-const expanded = ref(new Set()) // 펼쳐진 날짜 키 집합
+const expanded = ref(new Set())
 
 function visibleItems(d) {
   return expanded.value.has(d.key) ? d.items : d.items.slice(0, MAX_ITEMS)
@@ -257,6 +256,9 @@ function toggleExpand(key) {
   else s.add(key)
   expanded.value = s
 }
+
+function showMore(d){ return d.items.length > MAX_ITEMS }
+function overflowCount(d){ return Math.max(0, d.items.length - MAX_ITEMS) }
 
 const days = computed(() => {
   const start = startOfMonth(monthDate.value)
@@ -297,9 +299,13 @@ function emitSelectDate(ymd){
   emit('select-date', ymd)
 }
 function onClickDay(d) { emitSelectDate(d.key) }
-function clearSelection() {
-  selectedDate.value = ''
-  emit('select-date', '')
+function clearSelection() { selectedDate.value = ''; emit('select-date', '') }
+
+/* ===== Name click -> search ===== */
+function onClickName(name){
+  const v = (name || '').trim()
+  if (!v || v === '-') return
+  emit('search-name', v)
 }
 
 /* ===== Keyboard ===== */
@@ -334,7 +340,7 @@ function pickToday() {
 }
 function pickThisWeek() {
   const d = new Date()
-  const start = new Date(d); start.setDate(d.getDate() - d.getDay()) // 일요일
+  const start = new Date(d); start.setDate(d.getDate() - d.getDay())
   const ymd = toYmd(start)
   emit('update:month', `${start.getFullYear()}-${pad2(start.getMonth()+1)}`)
   emitSelectDate(ymd)
@@ -392,7 +398,6 @@ function ariaOfDay(d) {
 }
 .nav-wrap { display:flex; align-items:center; gap:10px; }
 
-/* 드롭다운 타이틀(큰 사이즈) */
 .month-switch { display:flex; align-items:center; gap:8px; }
 .picker {
   border:1px solid var(--border); background:#fff;
@@ -400,13 +405,7 @@ function ariaOfDay(d) {
   font-weight:800; color:#0f172a; font-size:16px;
 }
 
-/* 텍스트 타이틀 모드 */
-.month-title {
-  font-size: 26px;
-  font-weight: 900;
-  color: #0f172a;
-  letter-spacing: .2px;
-}
+.month-title { font-size: 26px; font-weight: 900; color: #0f172a; letter-spacing: .2px; }
 
 .nav {
   border:1px solid var(--border); background:#fff;
@@ -417,43 +416,28 @@ function ariaOfDay(d) {
 .nav.ghost:hover { background:#f1f5f9; }
 
 .actions { display:flex; align-items:center; gap:14px; flex-wrap:wrap; justify-content:flex-end; }
-.btn {
-  border-radius: 10px; padding: 9px 12px; font-weight:800; font-size:13px;
-  transition:.15s var(--ease);
-}
+.btn { border-radius: 10px; padding: 9px 12px; font-weight:800; font-size:13px; transition:.15s var(--ease); }
 .btn.ghost { border:1px solid var(--border); background:#fff; color:#111827; }
 .btn.ghost:hover { background:#f8fafc; }
 
 .quick-group { display:flex; gap:8px; }
-.chip {
-  padding:7px 12px; border-radius:999px; border:1px solid #e5e7eb;
-  background:#fff; color:#0f172a; font-weight:800; font-size:12px;
-}
+.chip { padding:7px 12px; border-radius:999px; border:1px solid #e5e7eb; background:#fff; color:#0f172a; font-weight:800; font-size:12px; }
 .chip:hover { background:#f8fafc; }
 
 .selected-wrap { display:flex; align-items:center; gap:8px; }
 .label { color:#6b7280; font-size:12px; }
-.date-chip {
-  padding: 7px 11px; border-radius: 10px; background:#f8fafc; border:1px solid #e5e7eb;
-  font-weight:800; font-size:13px; color:#0f172a;
-}
+.date-chip { padding: 7px 11px; border-radius: 10px; background:#f8fafc; border:1px solid #e5e7eb; font-weight:800; font-size:13px; color:#0f172a; }
 .date-chip.empty { color:#9ca3af; font-weight:700; }
 
 /* ===== Grid ===== */
-.grid { display:grid; grid-template-columns: repeat(7, 1fr); }
+.grid { display:grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
 .header { background:#f9fafb; border-bottom:1px solid var(--border); }
-.cell {
-  position:relative; padding:14px; border-right:1px solid #f3f4f6;
-  border-bottom:1px solid #f3f4f6; min-height:112px;
-}
+.cell { position:relative; padding:14px; border-right:1px solid #f3f4f6; border-bottom:1px solid #f3f4f6; min-height:112px; min-width:0; }
 .cell:nth-child(7n) { border-right:none; }
 .body:focus { outline: none; box-shadow: inset 0 0 0 2px rgba(37,99,235,.18); border-radius: 0; }
 
 /* Week header */
-.head {
-  text-align:center; font-weight:900; color:#475569; padding:12px 0; min-height:auto;
-  font-size:12px; text-transform: uppercase; letter-spacing:.5px;
-}
+.head { text-align:center; font-weight:900; color:#475569; padding:12px 0; min-height:auto; font-size:12px; text-transform: uppercase; letter-spacing:.5px; }
 .head.sun { color:#dc2626; }
 .head.sat { color:#2563eb; }
 
@@ -463,30 +447,26 @@ function ariaOfDay(d) {
 .day.out { color:#9ca3af; background:#fafafa; }
 .day.sun .num { color:#dc2626; }
 .day.sat .num { color:#2563eb; }
-.date {
-  display:flex; align-items:baseline; gap:6px;
-  position: relative; z-index: 2;
-  margin-bottom: 6px;
-}
+.date { display:flex; align-items:baseline; gap:6px; position: relative; z-index: 2; margin-bottom: 6px; }
 .date .num { font-weight:900; font-size:16px; color:#0f172a; transition: color .12s; }
 .today .num { color:#1d4ed8; }
 .pill.today { font-size:10px; font-weight:900; color:#1d4ed8; background:#e6f2ff; padding:2px 6px; border-radius:999px; }
 
 /* Booking chips: 1열 */
-.chips {
-  display:flex; flex-direction:column;
-  gap: 6px; margin-top:8px; position:relative; z-index:1;
-}
+.chips { display:flex; flex-direction:column; gap: 6px; margin-top:8px; position:relative; z-index:1; }
+
+/* 칩이 자식의 겹쳐진 텍스트/패널을 가리지 않도록 */
 .booking-chip {
   display:flex; align-items:center; gap:8px;
   padding:6px 8px; border-radius:10px; border:1px solid #e5e7eb; background:#fff;
   font-size:12px; line-height:1.2; box-shadow: 0 2px 6px rgba(0,0,0,.04);
   min-height: 40px; width: 100%;
-  overflow: hidden;
+  overflow: visible;
   box-sizing: border-box;
-  transition: box-shadow .15s var(--ease), transform .15s var(--ease);
+  transition: box-shadow .15s var(--ease), transform .15s var(--ease), z-index .15s;
+  position: relative; z-index: 1;
 }
-.booking-chip:hover { box-shadow: 0 6px 16px rgba(0,0,0,.08); transform: translateY(-1px); }
+.booking-chip:hover { box-shadow: 0 6px 16px rgba(0,0,0,.08); transform: translateY(-1px); z-index: 5; }
 
 .booking-chip .avatar {
   width:22px; height:22px; border-radius:999px; display:flex; align-items:center; justify-content:center;
@@ -495,16 +475,41 @@ function ariaOfDay(d) {
 .booking-chip .label {
   display:flex; flex-direction:column; align-items:flex-start; gap:2px; color:#0f172a;
   flex: 1 1 auto; min-width: 0;
+  position: relative;
 }
-.booking-chip .name,
-.booking-chip .email,
-.booking-chip .room {
-  display:block; width:100%;
-  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+
+/* 기본 말줄임 */
+.trunc { display:block; width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+/* 클릭 가능한 이름 스타일 */
+.actionable { cursor: pointer; }
+.actionable:hover { text-decoration: underline; }
+
+/* ========= 호버 시 전체 보이기(오른쪽으로 공간 확장) ========= */
+.hover-reveal {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translateY(-2px);
+  display: none;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 8px 24px rgba(0,0,0,.12);
+  white-space: nowrap;
+  width: max-content;
+  min-width: 100%;
+  z-index: 10;
+  pointer-events: none;
 }
-.booking-chip .name { font-weight:800; }
-.booking-chip .email { color:#6b7280; }
-.booking-chip .room  { color:#64748b; }
+
+.hover-reveal .line { display:block; }
+.hover-reveal .name-full { font-weight:800; }
+.hover-reveal .email-full { color:#6b7280; }
+.hover-reveal .room-full { color:#64748b; }
+
+.label:hover .hover-reveal { display: block; }
 
 /* 상태별 테두리/배경 */
 .booking-chip.active { border-color:#c7d2fe; background:#f8fafc; }
@@ -518,20 +523,21 @@ function ariaOfDay(d) {
   background:#111827; color:#fff; border:1px solid #111827;
   padding:8px 10px; border-radius:999px; font-size:12px; font-weight:800;
   text-align:center;
+  position: relative; z-index: 2;
 }
 .more-chip:hover { background:#1f2937; }
 
 /* 리스트 애니메이션 */
-.chiplist-enter-from,
-.chiplist-leave-to { opacity:0; transform: translateY(-4px); }
-.chiplist-enter-active,
-.chiplist-leave-active { transition: all .16s cubic-bezier(.2,.6,.2,1); }
+.chiplist-enter-from, .chiplist-leave-to { opacity:0; transform: translateY(-4px); }
+.chiplist-enter-active, .chiplist-leave-active { transition: all .16s cubic-bezier(.2,.6,.2,1); }
 .chiplist-move { transition: transform .16s cubic-bezier(.2,.6,.2,1); }
 
 /* Selected highlight */
 .selected { background:#eef2ff; }
 .selected-bg {
-  position:absolute; inset:6px; background:#e6edff; border-radius:12px; z-index:0;
+  position:absolute; inset:6px; background:#e6edff; border-radius:12px;
+  z-index: 0;
+  pointer-events: none;
 }
 
 /* Legend */

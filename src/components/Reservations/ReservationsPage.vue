@@ -6,26 +6,25 @@
       @export="exportCsv"
     />
 
-    <!-- 툴바 (날짜 입력 제거된 버전 + 캘린더 버튼 포함) -->
+    <!-- 툴바 (날짜 입력 + 캘린더 버튼) -->
     <ReservationsToolbar
-  :bulk="bulk"
-  :q="q"
-  :scope="scope"
-  :checked-count="checked.size"
-  :start-date="startDate"
-  :end-date="endDate"
-  @update:bulk="v => (bulk = v)"
-  @update:q="v => (q = v)"
-  @update:scope="onScopeSelected"
-  @update:startDate="v => (startDate = v)"
-  @update:endDate="v => (endDate = v)"
-  @search="filter"            
-  @apply-bulk="applyBulk"
-  @toggle-calendar="showCalendar = !showCalendar"
-/>
+      :bulk="bulk"
+      :q="q"
+      :scope="scope"
+      :checked-count="checked.size"
+      :start-date="startDate"
+      :end-date="endDate"
+      @update:bulk="v => (bulk = v)"
+      @update:q="v => (q = v)"
+      @update:scope="onScopeSelected"
+      @update:startDate="v => (startDate = v)"
+      @update:endDate="v => (endDate = v)"
+      @search="filter"
+      @apply-bulk="applyBulk"
+      @toggle-calendar="showCalendar = !showCalendar"
+    />
 
-
-    <!-- 캘린더: 버튼 눌러야 표시 / 검색 매칭 rows만 전달 -->
+    <!-- 캘린더 패널: 검색 매칭 rows만 전달 -->
     <div
       v-if="showCalendar"
       class="card"
@@ -38,6 +37,7 @@
         :resolved-room-title="resolvedRoomTitle"
         @update:month="v => (calendarMonth = v)"
         @select-date="onDateSelected"
+        @search-name="doSearchByName"
       />
     </div>
 
@@ -107,26 +107,29 @@ const rows = ref([])
 const q = ref('')
 const page = ref(1)
 const size = ref(10)
-let bulk = ref('')
+const bulk = ref('')
 const checked = ref(new Set())
 
-let scope = ref('single')
+const scope = ref('single')
 
 // ✅ 캘린더 월/선택일 + 표시 토글
 const calendarMonth = ref(new Date().toISOString().slice(0, 7))
 const selectedDate = ref('') // 'YYYY-MM-DD' or ''(전체 보기)
 const showCalendar = ref(false) // 캘린더 열기/닫기
 
+// 날짜 검색 입력값(툴바)
+const startDate = ref('')
+const endDate   = ref('')
+
 // 날짜 선택 시 즉시 필터 적용
 function onDateSelected(ymd) {
   selectedDate.value = ymd || ''
   filter()
-  // 선택 후 자동으로 닫고 싶으면 아래 주석 해제
-  // showCalendar.value = false
+  // showCalendar.value = false // 선택 후 닫고 싶다면 주석 해제
 }
 
 // 삭제/수정 관련
-let editing = ref(null)
+const editing = ref(null)
 const isCancelling = reactive({})
 async function deleteReservation(r) {
   await uiStore.openModal({
@@ -296,7 +299,7 @@ const filtered = computed(() => {
     list = list.filter(matchesSearch)
   }
 
-  // 단일 날짜 필터: 선택일이 체크인~체크아웃 범위에 포함된 예약만
+  // 단일 날짜 필터: 체크인~체크아웃 범위 포함
   if (selectedDate.value) {
     const d = selectedDate.value
     list = list.filter(r => {
@@ -306,6 +309,9 @@ const filtered = computed(() => {
     })
   }
 
+  // 날짜 구간(툴바 입력값)도 사용하려면 여기서 추가 필터링하면 됨
+  // if (startDate.value || endDate.value) { ... }
+
   return list
 })
 
@@ -313,6 +319,15 @@ const maxPage = computed(() => Math.max(1, Math.ceil(filtered.value.length / siz
 const paged = computed(() => filtered.value.slice((page.value - 1) * size.value, page.value * size.value))
 const pages = computed(() => Array.from({ length: maxPage.value }, (_, i) => i + 1))
 function filter() { page.value = 1 }
+
+// ✅ 이름 클릭 → 검색 적용 (다시 누르면 해제: 토글) — 포커스/스크롤 변경 없음
+function doSearchByName(name) {
+  const incoming = String(name ?? '').trim()
+  const same = incoming.toLowerCase() === (q.value || '').trim().toLowerCase()
+  q.value = same ? '' : incoming
+  page.value = 1
+  filter()
+}
 
 const allChecked = computed(() => !!paged.value.length && paged.value.every(r => checked.value.has(r.reservationId)))
 function toggle(id) { const s = new Set(checked.value); s.has(id) ? s.delete(id) : s.add(id); checked.value = s }
@@ -389,7 +404,6 @@ function onScopeSelected(v) {
 </script>
 
 <style scoped>
-/* ───────── Theme tokens & page-level wrappers ───────── */
 .page { --primary:#2563eb; --primary-ink:#111827; --primary-hover:#1d4ed8; --success:#16a34a; --warning:#d97706; --danger:#dc2626; --border:#e5e7eb; --border-strong:#d1d5db; --muted:#6b7280; --bg:#ffffff; --shadow:0 6px 16px rgba(0,0,0,.06); --shadow-soft:0 2px 8px rgba(0,0,0,.05); --radius:12px; --radius-sm:8px; --ease:cubic-bezier(.2,.6,.2,1); }
 
 .card { margin: 30px 0;padding:0; border:1px solid var(--border); border-radius:var(--radius); background:var(--bg); box-shadow: var(--shadow-soft); }

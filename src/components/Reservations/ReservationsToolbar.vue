@@ -116,8 +116,6 @@ defineEmits([
   'search',
   'apply-bulk',
   'toggle-calendar',
-  'update:startDate',
-  'update:endDate'
 ])
 </script>
 
