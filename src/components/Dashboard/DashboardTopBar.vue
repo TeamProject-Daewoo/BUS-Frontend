@@ -42,15 +42,15 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 
 const props = defineProps({
-  startDate: String,
-  endDate: String,
+  startDate: { type: String, default: '' },
+  endDate:   { type: String, default: '' },
   rangeDays: { type: Number, default: 30 },
-  loading: { type: Boolean, default: false },
+  loading:   { type: Boolean, default: false },
   /** 'single' | 'all' */
-  scope: { type: String, default: 'single' }
+  scope:     { type: String, default: 'single' }
 })
 const emit = defineEmits([
   'update:startDate', 'update:endDate', 'update:rangeDays', 'update:scope',
@@ -72,6 +72,20 @@ const modelRangeDays = computed({
 const modelScope = computed({
   get: () => props.scope,
   set: v => emit('update:scope', v)
+})
+
+/** 날짜 입력용 YYYY-MM-DD (로컬 타임존 보정) */
+function todayStr () {
+  const d = new Date()
+  const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000)
+  return local.toISOString().slice(0, 10)
+}
+
+/** 마지막 날짜(endDate)가 비어 있으면 오늘로 디폴트 */
+onMounted(() => {
+  if (!props.endDate) {
+    emit('update:endDate', todayStr())
+  }
 })
 </script>
 

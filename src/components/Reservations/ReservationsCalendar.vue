@@ -26,15 +26,15 @@
 
         <div class="quick-group" role="group" aria-label="빠른 선택">
           <button class="chip" @click="pickToday">오늘</button>
-          <button class="chip" @click="pickThisWeek">이번 주(첫날)</button>
-          <button class="chip" @click="pickThisMonth">이번 달(1일)</button>
+          <!-- '이번 주' 버튼 제거 -->
+          <button class="chip" @click="pickThisMonth">이번 달(전체)</button>
         </div>
 
         <!-- 선택한 날짜 표시/초기화 -->
         <div class="selected-wrap">
           <span class="label">선택일</span>
-          <span class="date-chip" :class="{ empty: !selectedDate }">{{ selectedDate || '—' }}</span>
-          <button class="btn ghost" @click="clearSelection" :disabled="!selectedDate">전체 보기</button>
+          <span class="date-chip" :class="{ empty: !selectedDisplay }">{{ selectedDisplay || '—' }}</span>
+          <button class="btn ghost" @click="clearSelection" :disabled="!selectedDisplay">전체 보기</button>
         </div>
       </div>
     </div>
@@ -50,13 +50,23 @@
     </div>
 
     <!-- ===== Calendar Body ===== -->
-    <div class="grid body" @keydown="onKeydown" tabindex="0" aria-label="달력 날짜 그리드">
+    <div
+      class="grid body"
+      @keydown="onKeydown"
+      tabindex="0"
+      aria-label="달력 날짜 그리드"
+    >
       <div
         v-for="d in days"
         :key="d.key"
         class="cell day"
         :class="dayClass(d)"
-        @click="onClickDay(d)"
+        @mousedown.prevent="onMouseDownDay(d, $event)"
+        @mouseenter="onMouseEnterDay(d)"
+        @mouseup="onMouseUpDay($event)"
+        @touchstart.passive="onTouchStartDay(d, $event)"
+        @touchmove.passive="onTouchMoveDay($event)"
+        @touchend.passive="onTouchEndDay($event)"
         :title="d.tooltip"
         :aria-label="ariaOfDay(d)"
         :data-date="d.key"
@@ -77,33 +87,37 @@
               cancel: b.statusType==='cancel',
               active: b.statusType==='active'
             }"
+            :title="chipTitle(b)"
+            role="button"
+            tabindex="0"
+            @click="onClickBooking(b)"
+            @keydown.enter.prevent="onClickBooking(b)"
+            @keydown.space.prevent="onClickBooking(b)"
           >
+            <!-- IN / OUT 코너 배지 -->
+            <span v-if="isIn(b, d.key)" class="corner in">IN</span>
+            <span v-else-if="isOut(b, d.key)" class="corner out">OUT</span>
+
             <span class="avatar" :style="{ background: avatarColor(b.customerName) }">
               {{ initials(b.customerName) }}
             </span>
 
-            <!-- 본문(말줄임) + 호버시 겹쳐서 전체 노출 패널 -->
+            <!-- 본문(말줄임) + 호버시 '위'로 확장 패널 -->
             <span class="label">
-              <!-- ✨ 이름 클릭/키보드로 검색 트리거 -->
-              <span
-                class="name trunc actionable"
-                role="button"
-                tabindex="0"
-                @click.stop="onClickName(b.customerName)"
-                @keydown.enter.stop="onClickName(b.customerName)"
-                @keydown.space.stop.prevent="onClickName(b.customerName)"
-              >
-                {{ b.customerName || '-' }}
-              </span>
-
+              <span class="name trunc">{{ b.customerName || '-' }}</span>
               <span v-if="b.email" class="email trunc">{{ b.email }}</span>
               <span v-if="b.roomTitle" class="room trunc">{{ b.roomTitle }}</span>
 
-              <!-- 호버용 전체 패널(레이아웃 영향 없음) -->
+              <!-- 호버 패널 -->
               <div class="hover-reveal" aria-hidden="true">
-                <div class="line name-full">{{ b.customerName || '-' }}</div>
-                <div v-if="b.email" class="line email-full">{{ b.email }}</div>
-                <div v-if="b.roomTitle" class="line room-full">{{ b.roomTitle }}</div>
+                <div class="name-line">
+                  <span class="usr-ico">👤</span>
+                  <span class="name-full">{{ b.customerName || '-' }}</span>
+                  <span v-if="b.email" class="sep">·</span>
+                  <span v-if="b.email" class="email-inline">{{ b.email }}</span>
+                </div>
+                <div v-if="b.roomTitle" class="line room-full">🛏️ {{ b.roomTitle }}</div>
+                <div v-if="b.hotelTitle" class="line hotel-full">🏨 {{ b.hotelTitle }}</div>
               </div>
             </span>
           </div>
@@ -120,7 +134,7 @@
           {{ expanded.has(d.key) ? '접기' : `+${overflowCount(d)}` }}
         </button>
 
-        <!-- 선택 하이라이트 -->
+        <!-- 단일 선택 하이라이트 -->
         <div v-if="selectedDate && d.key === selectedDate" class="selected-bg" />
       </div>
     </div>
@@ -135,13 +149,18 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 
 /* ===== Props / Emits ===== */
 const props = defineProps({
   reservations: { type: Array, default: () => [] },
   /** 표시 월: "YYYY-MM" */
-  month: { type: String, required: true }
+  month: { type: String, required: true },
+  /** ✅ 외부에서 객실/호텔명을 계산해 주는 함수 받기 */
+  roomResolver: { type: Function, default: null },   // (row) => string
+  hotelResolver:{ type: Function, default: null },   // (row) => string
+  /** ✅ 사이드바 선택 호텔명 등 기본값 (단일 모드에서만 부모가 넘김) */
+  hotelTitleDefault: { type: String, default: '' }
 })
 const emit = defineEmits(['update:month', 'select-date', 'search-name'])
 
@@ -205,6 +224,15 @@ function avatarColor(seed){
   return `hsl(${h} 70% 92%)`
 }
 
+/* ===== Helpers: range equality (토글 판정에 사용) ===== */
+function isRangeSelected(r){
+  return !!r?.start && !!r?.end
+}
+function isSameRange(a, b){
+  if (!a || !b) return false
+  return a.start === b.start && a.end === b.end
+}
+
 /* ===== Day aggregation (with items) ===== */
 const dayStats = computed(() => {
   const map = Object.create(null)
@@ -226,8 +254,16 @@ const dayStats = computed(() => {
         id: r.reservationId,
         customerName: r.customerName || r.userDisplayName || r.userName || '-',
         email: r.userEmail || r.userName || '',
-        roomTitle: r.roomtitle || r.roomTitle || '',
-        statusType: st || 'active'
+        // ✅ 외부 리졸버 우선 사용
+        roomTitle:
+          (props.roomResolver && props.roomResolver(r)) ||
+          r.roomtitle || r.roomTitle || r.room_name || r.room?.name || '',
+        hotelTitle:
+          (props.hotelResolver && props.hotelResolver(r)) ||
+          r.hotelTitle || r.hotel || r.hotelName || r.contentTitle || r.hotel?.name || props.hotelTitleDefault || '',
+        statusType: st || 'active',
+        checkInDate: r.checkInDate ? toYmd(new Date(r.checkInDate)) : '',
+        checkOutDate: r.checkOutDate ? toYmd(new Date(r.checkOutDate)) : ''
       })
     }
   }
@@ -260,6 +296,7 @@ function toggleExpand(key) {
 function showMore(d){ return d.items.length > MAX_ITEMS }
 function overflowCount(d){ return Math.max(0, d.items.length - MAX_ITEMS) }
 
+/* ===== Build calendar cells ===== */
 const days = computed(() => {
   const start = startOfMonth(monthDate.value)
   const startIdx = start.getDay()
@@ -291,22 +328,138 @@ const days = computed(() => {
   return cells
 })
 
-/* ===== Single-date selection ===== */
-const selectedDate = ref('')
+/* ===== Selection state ===== */
+const selectedDate = ref('')                         // 단일
+const selectedRange = ref({ start: '', end: '' })    // 구간
 
+const selectedDisplay = computed(() => {
+  const { start, end } = selectedRange.value || {}
+  if (start && end) return `${start} ~ ${end}`
+  return selectedDate.value || ''
+})
+
+/* ===== 선택(토글 포함) ===== */
 function emitSelectDate(ymd){
+  // 이미 같은 날짜가 단일 선택되어 있으면 해제
+  if (selectedDate.value === ymd && !isRangeSelected(selectedRange.value)) {
+    clearSelection()
+    return
+  }
+  selectedRange.value = { start: '', end: '' }
   selectedDate.value = ymd
   emit('select-date', ymd)
 }
-function onClickDay(d) { emitSelectDate(d.key) }
-function clearSelection() { selectedDate.value = ''; emit('select-date', '') }
-
-/* ===== Name click -> search ===== */
-function onClickName(name){
-  const v = (name || '').trim()
-  if (!v || v === '-') return
-  emit('search-name', v)
+function clearSelection() {
+  selectedDate.value = ''
+  selectedRange.value = { start: '', end: '' }
+  emit('select-date', '')
 }
+
+/* ===== Drag range (mouse & touch) ===== */
+/** 핵심 포인트:
+ * - 마우스를 누른 직후엔 드래그 모드가 아님(isMouseDown만 true)
+ * - 다른 셀로 'mouseenter'가 발생해야 드래그 모드로 전환(dragActive=true)
+ * - 같은 셀에서 mouseup이면 '단일 선택'
+ */
+const isMouseDown = ref(false)
+const dragActive  = ref(false)
+const dragStartKey = ref('')
+const dragEndKey = ref('')
+
+function normalizedRange(a, b) {
+  if (!a || !b) return { start: '', end: '' }
+  return a <= b ? { start: a, end: b } : { start: b, end: a }
+}
+
+function onMouseDownDay(d, e) {
+  if (!(e.currentTarget?.classList?.contains('day'))) return
+  isMouseDown.value = true
+  dragActive.value = false
+  dragStartKey.value = d.key
+  dragEndKey.value = d.key
+}
+function onMouseEnterDay(d) {
+  // 마우스를 누른 상태로 다른 셀에 들어오면 드래그 시작
+  if (isMouseDown.value) {
+    dragActive.value = true
+    dragEndKey.value = d.key
+  }
+}
+function onMouseUpDay() { finishPointer() }
+
+/** 공통 마무리(마우스/터치) — 동일 구간이면 해제(토글) */
+function finishPointer() {
+  if (!dragStartKey.value) return
+  const startKey = dragStartKey.value
+  const endKey   = dragEndKey.value
+
+  if (!dragActive.value) {
+    // 단일 선택: 같은 날짜면 emitSelectDate 내부에서 해제 처리
+    emitSelectDate(startKey)
+  } else {
+    const next = normalizedRange(startKey, endKey)
+    if (!next.start || !next.end || next.start === next.end) {
+      emitSelectDate(next.start || next.end)
+    } else {
+      // 같은 범위를 다시 드래그하면 해제
+      if (isSameRange(selectedRange.value, next)) {
+        clearSelection()
+      } else {
+        selectedDate.value = ''
+        selectedRange.value = next
+        emit('select-date', next)
+      }
+    }
+  }
+  // reset
+  isMouseDown.value = false
+  dragActive.value = false
+  dragStartKey.value = ''
+  dragEndKey.value = ''
+}
+
+/* ===== Touch (모바일) ===== */
+function pointToDateKeyFromEvent(evt) {
+  const t = evt.touches?.[0] || evt.changedTouches?.[0]
+  if (!t) return ''
+  const el = document.elementFromPoint(t.clientX, t.clientY)
+  const cell = el?.closest?.('.cell.day')
+  return cell?.getAttribute?.('data-date') || ''
+}
+function onTouchStartDay(d) {
+  dragActive.value = false
+  dragStartKey.value = d.key
+  dragEndKey.value = d.key
+}
+function onTouchMoveDay(evt) {
+  const key = pointToDateKeyFromEvent(evt)
+  if (key && key !== dragStartKey.value) {
+    dragActive.value = true
+    dragEndKey.value = key
+  }
+}
+function onTouchEndDay(evt) {
+  const key = pointToDateKeyFromEvent(evt)
+  if (key) dragEndKey.value = key
+  finishPointer()
+}
+
+/* ===== Helpers ===== */
+function chipTitle(b){
+  const parts = []
+  if (b.customerName) parts.push(b.customerName)
+  if (b.email) parts.push(b.email)
+  if (b.roomTitle) parts.push(b.roomTitle)
+  if (b.hotelTitle) parts.push(b.hotelTitle)
+  return parts.join(' · ')
+}
+function onClickBooking(b){
+  const name = (b?.customerName || '').trim()
+  if (!name) return
+  emit('search-name', name)
+}
+function isIn(item, dayKey){ return item.checkInDate && item.checkInDate === dayKey }
+function isOut(item, dayKey){ return item.checkOutDate && item.checkOutDate === dayKey }
 
 /* ===== Keyboard ===== */
 function moveFocus(from, delta) {
@@ -332,36 +485,60 @@ function onKeydown(e) {
   }
 }
 
-/* ===== Quick picks ===== */
+/* ===== Quick picks (토글 동작) ===== */
 function pickToday() {
   const t = toYmd(new Date())
+
+  // 이미 '오늘'이 단일 선택 상태면 해제
+  if (selectedDate.value === t && !isRangeSelected(selectedRange.value)) {
+    clearSelection()
+    return
+  }
+
   emit('update:month', `${t.slice(0,4)}-${t.slice(5,7)}`)
   emitSelectDate(t)
 }
-function pickThisWeek() {
-  const d = new Date()
-  const start = new Date(d); start.setDate(d.getDate() - d.getDay())
-  const ymd = toYmd(start)
-  emit('update:month', `${start.getFullYear()}-${pad2(start.getMonth()+1)}`)
-  emitSelectDate(ymd)
-}
+/* ✅ 이번 달 = 해당 월의 1일 ~ 말일 전체 구간 선택 (같은 범위를 다시 누르면 해제) */
 function pickThisMonth() {
-  const d = new Date()
-  const s = startOfMonth(d)
-  const ymd = toYmd(s)
-  emit('update:month', `${d.getFullYear()}-${pad2(d.getMonth()+1)}`)
-  emitSelectDate(ymd)
+  const now = new Date()
+  const sDate = startOfMonth(now)                                     // 1일
+  const eDate = new Date(sDate.getFullYear(), sDate.getMonth() + 1, 0)  // 말일
+  const start = toYmd(sDate)
+  const end   = toYmd(eDate)
+  const newRange = { start, end }
+
+  // 이미 같은 월 전체 범위가 선택되어 있으면 해제
+  if (isSameRange(selectedRange.value, newRange)) {
+    clearSelection()
+    return
+  }
+
+  emit('update:month', `${now.getFullYear()}-${pad2(now.getMonth()+1)}`)
+  selectedDate.value = ''
+  selectedRange.value = newRange
+  emit('select-date', newRange)
 }
 
 /* ===== Day classes ===== */
 function dayClass(d) {
+  const { start, end } = dragActive.value
+    ? normalizedRange(dragStartKey.value, dragEndKey.value)
+    : (selectedRange.value || { start: '', end: '' })
+
+  const inRange = !!start && !!end && d.key >= start && d.key <= end
+  const isStart = !!start && d.key === start
+  const isEnd   = !!end && d.key === end
+
   return {
     out: !d.inMonth,
     today: d.isToday,
     clickable: true,
     sun: d.dow === 0,
     sat: d.dow === 6,
-    selected: selectedDate.value && d.key === selectedDate.value
+    selected: selectedDate.value && d.key === selectedDate.value,
+    'in-range': inRange,
+    'range-start': isStart,
+    'range-end': isEnd
   }
 }
 
@@ -375,6 +552,13 @@ function ariaOfDay(d) {
   if (selectedDate.value === d.key) info.push('선택됨')
   return info.join(', ')
 }
+
+/* ===== doc mouseup(바깥에서 놓아도 마무리) ===== */
+function onDocMouseUp(){ 
+  if (isMouseDown.value) finishPointer()
+}
+onMounted(() => document.addEventListener('mouseup', onDocMouseUp))
+onBeforeUnmount(() => document.removeEventListener('mouseup', onDocMouseUp))
 </script>
 
 <style scoped>
@@ -384,7 +568,8 @@ function ariaOfDay(d) {
   border-radius: var(--radius);
   background: #fff;
   box-shadow: var(--shadow-soft);
-  overflow: hidden;
+  /* ✅ 패널이 캘린더 밖으로 넘쳐도 보이도록 */
+  overflow: visible;
 }
 
 /* ===== Top Bar ===== */
@@ -431,9 +616,20 @@ function ariaOfDay(d) {
 
 /* ===== Grid ===== */
 .grid { display:grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+/* ✅ 어떤 래퍼에서도 가려지지 않게 */
+.grid, .body { overflow: visible; }
+
 .header { background:#f9fafb; border-bottom:1px solid var(--border); }
-.cell { position:relative; padding:14px; border-right:1px solid #f3f4f6; border-bottom:1px solid #f3f4f6; min-height:112px; min-width:0; }
+.cell { position:relative; padding:14px; border-right:1px solid #f3f4f6; border-bottom:1px solid #f3f4f6; min-height:112px; min-width:0; user-select: none; overflow: visible; }
 .cell:nth-child(7n) { border-right:none; }
+/* 셀 기본과 호버 시 레이어 순서 보정 */
+.cell.day { position: relative; z-index: 0; }              /* 기본 레벨 */
+.cell.day:hover,
+.cell.day:focus-within { z-index: 20000; }                 /* 호버/키보드 포커스 시 최상단 */
+
+/* (선택) 툴팁 자체도 한 단계 더 올려 두면 안전 */
+.cell.day:hover .hover-reveal,
+.cell.day:focus-within .hover-reveal { z-index: 20001; }
 .body:focus { outline: none; box-shadow: inset 0 0 0 2px rgba(37,99,235,.18); border-radius: 0; }
 
 /* Week header */
@@ -455,19 +651,37 @@ function ariaOfDay(d) {
 /* Booking chips: 1열 */
 .chips { display:flex; flex-direction:column; gap: 6px; margin-top:8px; position:relative; z-index:1; }
 
-/* 칩이 자식의 겹쳐진 텍스트/패널을 가리지 않도록 */
+/* 칩 */
 .booking-chip {
   display:flex; align-items:center; gap:8px;
   padding:6px 8px; border-radius:10px; border:1px solid #e5e7eb; background:#fff;
   font-size:12px; line-height:1.2; box-shadow: 0 2px 6px rgba(0,0,0,.04);
   min-height: 40px; width: 100%;
-  overflow: visible;
+  overflow: visible;             /* ✅ 패널이 칩 경계를 넘도록 */
   box-sizing: border-box;
   transition: box-shadow .15s var(--ease), transform .15s var(--ease), z-index .15s;
   position: relative; z-index: 1;
+  cursor: pointer;
 }
-.booking-chip:hover { box-shadow: 0 6px 16px rgba(0,0,0,.08); transform: translateY(-1px); z-index: 5; }
+.booking-chip:hover { 
+  box-shadow: 0 6px 16px rgba(0,0,0,.08); 
+  transform: translateY(-1px); 
+  z-index: 10000;               /* ✅ 항상 최상단 레이어로 */
+}
 
+/* 좌상단 IN/OUT 코너 배지 */
+.corner{
+  position:absolute; top:-6px; left:-6px;
+  font-size:10px; font-weight:900;
+  padding:2px 5px; border-radius:6px;
+  color:#fff; border:1px solid rgba(0,0,0,.08);
+  box-shadow: 0 2px 6px rgba(0,0,0,.08);
+  z-index: 10001;               /* ✅ 패널 위에 */
+}
+.corner.in{ background:#16a34a; }
+.corner.out{ background:#2563eb; }
+
+/* 아바타/라벨 */
 .booking-chip .avatar {
   width:22px; height:22px; border-radius:999px; display:flex; align-items:center; justify-content:center;
   font-weight:900; color:#374151; border:1px solid var(--border); flex: 0 0 22px;
@@ -481,35 +695,53 @@ function ariaOfDay(d) {
 /* 기본 말줄임 */
 .trunc { display:block; width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
-/* 클릭 가능한 이름 스타일 */
-.actionable { cursor: pointer; }
-.actionable:hover { text-decoration: underline; }
+/* === 호버 패널: 칩 ‘바로 위’, 텍스트 길이에 맞춰 가로 확대 === */
+.cell, .chips, .booking-chip { overflow: visible; }
 
-/* ========= 호버 시 전체 보이기(오른쪽으로 공간 확장) ========= */
 .hover-reveal {
   position: absolute;
+  bottom: calc(100% - 4px);
   left: 0;
-  top: 0;
-  transform: translateY(-2px);
-  display: none;
-  padding: 6px 8px;
-  border-radius: 8px;
+  display: inline-block;
+  width: fit-content;
+  min-width: 100%;
+  max-width: 720px;
+  white-space: normal;
+  overflow-x: hidden;
+  overflow-y: auto;
+  max-height: 240px;
+  padding: 10px 12px;
+  border-radius: 10px;
   background: #ffffff;
   border: 1px solid #e5e7eb;
-  box-shadow: 0 8px 24px rgba(0,0,0,.12);
-  white-space: nowrap;
-  width: max-content;
-  min-width: 100%;
-  z-index: 10;
-  pointer-events: none;
+  box-shadow: 0 12px 28px rgba(0,0,0,.16);
+
+  z-index: 9999;               /* ✅ 다른 모든 요소 위로 */
+  pointer-events: auto;
+
+  opacity: 0;
+  transition: opacity .12s ease;
 }
 
-.hover-reveal .line { display:block; }
-.hover-reveal .name-full { font-weight:800; }
-.hover-reveal .email-full { color:#6b7280; }
-.hover-reveal .room-full { color:#64748b; }
+/* 첫 줄(이름 + 이메일 한 줄) */
+.name-line{
+  display:flex; align-items:center; gap:8px;
+  flex-wrap: wrap;
+  margin-bottom:6px;
+}
+.usr-ico { line-height:1; }
+.name-full{ font-weight:800; color:#111827; }
+.sep{ color:#cbd5e1; }
+.email-inline{ color:#6b7280; }
 
-.label:hover .hover-reveal { display: block; }
+/* 객실/호텔 */
+.hover-reveal .line { display:block; }
+.room-full { color:#64748b; }
+.hotel-full { color:#0f172a; font-weight:700; }
+
+/* ✅ 칩/패널 중 하나라도 호버 중이면 계속 보이게 */
+.booking-chip:hover .hover-reveal,
+.hover-reveal:hover { opacity: 1; }
 
 /* 상태별 테두리/배경 */
 .booking-chip.active { border-color:#c7d2fe; background:#f8fafc; }
@@ -532,12 +764,36 @@ function ariaOfDay(d) {
 .chiplist-enter-active, .chiplist-leave-active { transition: all .16s cubic-bezier(.2,.6,.2,1); }
 .chiplist-move { transition: transform .16s cubic-bezier(.2,.6,.2,1); }
 
-/* Selected highlight */
+/* 단일 선택 하이라이트 */
 .selected { background:#eef2ff; }
 .selected-bg {
   position:absolute; inset:6px; background:#e6edff; border-radius:12px;
   z-index: 0;
   pointer-events: none;
+}
+
+/* ===== Range highlight ===== */
+.day.in-range { background: #e6edff; }
+.day.range-start .date .num,
+.day.range-end .date .num { color:#ffffff; }
+.day.range-start::after,
+.day.range-end::after {
+  content: '';
+  position: absolute;
+  top: 6px; bottom: 6px;
+  left: 6px; right: 6px;
+  border-radius: 12px;
+  background: #3b82f6;
+  z-index: 0;
+}
+.day.in-range:not(.range-start):not(.range-end)::after {
+  content: '';
+  position: absolute;
+  top: 6px; bottom: 6px;
+  left: 6px; right: 6px;
+  border-radius: 12px;
+  background: #cfe0ff;
+  z-index: 0;
 }
 
 /* Legend */

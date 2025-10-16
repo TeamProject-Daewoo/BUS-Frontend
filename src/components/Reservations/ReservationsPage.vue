@@ -14,12 +14,13 @@
       :checked-count="checked.size"
       :start-date="startDate"
       :end-date="endDate"
+      :show-calendar="showCalendar"
       @update:bulk="v => (bulk = v)"
       @update:q="v => (q = v)"
       @update:scope="onScopeSelected"
       @update:startDate="v => (startDate = v)"
       @update:endDate="v => (endDate = v)"
-      @search="filter"
+      @search="onDateSearch"
       @apply-bulk="applyBulk"
       @toggle-calendar="showCalendar = !showCalendar"
     />
@@ -34,7 +35,9 @@
       <ReservationsCalendar
         :reservations="rowsForCalendar"
         :month="calendarMonth"
-        :resolved-room-title="resolvedRoomTitle"
+        :room-resolver="resolvedRoomTitle"
+        :hotel-resolver="hotelResolver"
+        :hotel-title-default="scope==='single' ? currentHotelTitle : ''"
         @update:month="v => (calendarMonth = v)"
         @select-date="onDateSelected"
         @search-name="doSearchByName"
@@ -85,7 +88,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, reactive } from 'vue'
+import { ref, computed, watch, reactive, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useHotelStore } from '@/stores/hotel'
 import { getReservations, getRooms, bulkReservations, updateReservation } from '@/api/business'
@@ -102,6 +105,13 @@ import ReservationsCalendar from './ReservationsCalendar.vue'
 const store = useHotelStore()
 const uiStore = useUiStore()
 
+// ── 호텔 목록 선로딩 (호텔명 매핑 안정화)
+onMounted(async () => {
+  if (!store.hotels?.length) {
+    await store.loadHotels()
+  }
+})
+
 // ── state
 const rows = ref([])
 const q = ref('')
@@ -112,20 +122,48 @@ const checked = ref(new Set())
 
 const scope = ref('single')
 
-// ✅ 캘린더 월/선택일 + 표시 토글
+// ✅ 캘린더 월/선택 + 표시 토글
 const calendarMonth = ref(new Date().toISOString().slice(0, 7))
-const selectedDate = ref('') // 'YYYY-MM-DD' or ''(전체 보기)
-const showCalendar = ref(false) // 캘린더 열기/닫기
+const selectedDay = ref('')                         // 'YYYY-MM-DD'
+const selectedRange = ref({ start: '', end: '' })   // {start,end}
+const showCalendar = ref(false)                     // 캘린더 표시 여부
 
 // 날짜 검색 입력값(툴바)
-const startDate = ref('')
-const endDate   = ref('')
+const startDate = ref('') // 'YYYY-MM-DD'
+const endDate   = ref('') // 'YYYY-MM-DD'
 
-// 날짜 선택 시 즉시 필터 적용
-function onDateSelected(ymd) {
-  selectedDate.value = ymd || ''
+// 날짜 선택 시 즉시 필터 적용 + 입력값과 동기화 (문자열 or {start,end} or '')
+function onDateSelected(payload) {
+  if (typeof payload === 'string') {
+    // 단일 날짜
+    selectedDay.value = payload || ''
+    selectedRange.value = { start: '', end: '' }
+    // 입력도 동일하게 맞추기 (단일이면 start=end)
+    startDate.value = payload || ''
+    endDate.value = payload || ''
+  } else if (payload && payload.start && payload.end) {
+    // 구간
+    selectedDay.value = ''
+    selectedRange.value = { start: payload.start, end: payload.end }
+    startDate.value = payload.start
+    endDate.value = payload.end
+  } else {
+    // 해제
+    selectedDay.value = ''
+    selectedRange.value = { start: '', end: '' }
+    startDate.value = ''
+    endDate.value = ''
+  }
   filter()
-  // showCalendar.value = false // 선택 후 닫고 싶다면 주석 해제
+}
+
+// “날짜 검색” 버튼 → 입력값을 기준으로 필터 (캘린더 선택은 비움)
+function onDateSearch() {
+  if (startDate.value || endDate.value) {
+    selectedDay.value = ''
+    selectedRange.value = { start: '', end: '' }
+  }
+  filter()
 }
 
 // 삭제/수정 관련
@@ -178,7 +216,7 @@ async function saveEdit(form) {
   }
 }
 
-// 객실명 처리
+/* ================== 객실명 처리 ================== */
 const titleById = ref({})
 const titleByCode = ref({})
 const norm = (v) => String(v ?? '').trim().toLowerCase()
@@ -197,7 +235,32 @@ function resolvedRoomTitle(r) {
 }
 function titleTooltip(r) { return `객실: ${resolvedRoomTitle(r)}${r.roomcode ? ` / 코드: ${r.roomcode}` : ''}` }
 
-// 데이터 로드
+/* ================== 호텔명 매핑 ================== */
+const hotelTitleMap = computed(() =>
+  Object.fromEntries((store.hotels || []).map(h => [
+    String(h.contentid ?? h.id ?? ''), String(h.title ?? h.contentTitle ?? h.name ?? '')
+  ]))
+)
+const currentHotelTitle = computed(() => {
+  const id = String(store.selectedContentId ?? '')
+  return hotelTitleMap.value[id] || ''
+})
+
+function hotelTitleOf(r) {
+  const direct = r.hotelTitle || r.hotel || r.hotelName || r.contentTitle || ''
+  if (direct) return direct
+  const key = String(r.contentId ?? r.contentid ?? '')
+  if (key && hotelTitleMap.value[key]) return hotelTitleMap.value[key]
+  if (scope.value === 'single' && store.selectedContentId) {
+    return hotelTitleMap.value[String(store.selectedContentId)] || ''
+  }
+  return ''
+}
+function hotelResolver(row) {
+  return hotelTitleOf(row)
+}
+
+/* ================== 데이터 로드 ================== */
 watch(() => [store.selectedContentId, scope.value], async () => {
   if (scope.value === 'single' && !store.selectedContentId) { rows.value = []; return }
   await loadRooms()
@@ -263,6 +326,8 @@ function toUiRow(x) {
     checkInDate: x.checkInDate,
     checkOutDate: x.checkOutDate,
     reservationDate: x.reservationDate,
+    contentId: x.contentId ?? x.contentid,   // ✅ 호텔 매핑용
+    hotelTitle: x.hotelTitle || x.hotel || x.hotelName || x.contentTitle || '', // ✅ 보존(있으면 최우선 사용)
     roomcode: x.roomcode,
     roomtitle: x.roomtitle || '',
     statusType, statusLabel,
@@ -285,32 +350,54 @@ const matchesSearch = (r) => {
   )
 }
 
-// ✅ 캘린더 전용 리스트: "검색"만 반영 (selectedDate는 반영 X)
+// ✅ 캘린더 전용 리스트: "검색"만 반영 (선택은 반영 X)
 const rowsForCalendar = computed(() => {
   return (rows.value || []).filter(matchesSearch)
 })
 
-// 표용 필터: 검색 + 단일 날짜(selectedDate) 범위 포함 필터
+function clip10(s){ return (s || '').slice(0,10) }
+
+// 표용 필터: 검색 + (1) 캘린더 단일 또는 구간 선택 우선, (2) 없으면 입력값으로 필터
 const filtered = computed(() => {
   let list = rows.value
 
-  // 텍스트 검색
-  if (q.value) {
-    list = list.filter(matchesSearch)
-  }
+  if (q.value) list = list.filter(matchesSearch)
 
-  // 단일 날짜 필터: 체크인~체크아웃 범위 포함
-  if (selectedDate.value) {
-    const d = selectedDate.value
-    list = list.filter(r => {
-      const inD  = (r.checkInDate  || '').slice(0, 10)
-      const outD = (r.checkOutDate || r.checkInDate || '').slice(0, 10)
-      return inD && outD && d >= inD && d <= outD
+  // 1) 캘린더 선택 기준
+  const day = selectedDay.value
+  const { start, end } = selectedRange.value || { start: '', end: '' }
+
+  if (day) {
+    return list.filter(r => {
+      const inD  = clip10(r.checkInDate)
+      const outD = clip10(r.checkOutDate || r.checkInDate)
+      return inD && outD && day >= inD && day <= outD
+    })
+  }
+  if (start && end) {
+    // 기간 겹침: !(B < A || A' < B')
+    return list.filter(r => {
+      const inD  = clip10(r.checkInDate)
+      const outD = clip10(r.checkOutDate || r.checkInDate)
+      if (!inD || !outD) return false
+      return !(outD < start || inD > end)
     })
   }
 
-  // 날짜 구간(툴바 입력값)도 사용하려면 여기서 추가 필터링하면 됨
-  // if (startDate.value || endDate.value) { ... }
+  // 2) 입력값 기준 (한쪽만 있어도 처리)
+  const s = startDate.value
+  const e = endDate.value
+  if (s || e) {
+    return list.filter(r => {
+      const inD  = clip10(r.checkInDate)
+      const outD = clip10(r.checkOutDate || r.checkInDate)
+      if (!inD || !outD) return false
+      if (s && e) return !(outD < s || inD > e)        // 겹침
+      if (s && !e) return outD >= s                    // 시작만: s 이후(포함)
+      if (!s && e) return inD <= e                     // 끝만: e 이전(포함)
+      return true
+    })
+  }
 
   return list
 })
@@ -320,7 +407,7 @@ const paged = computed(() => filtered.value.slice((page.value - 1) * size.value,
 const pages = computed(() => Array.from({ length: maxPage.value }, (_, i) => i + 1))
 function filter() { page.value = 1 }
 
-// ✅ 이름 클릭 → 검색 적용 (다시 누르면 해제: 토글) — 포커스/스크롤 변경 없음
+// ✅ 이름 클릭 → 검색 적용(토글)
 function doSearchByName(name) {
   const incoming = String(name ?? '').trim()
   const same = incoming.toLowerCase() === (q.value || '').trim().toLowerCase()
@@ -366,10 +453,13 @@ async function applyBulk() {
 
 // CSV
 function toCsv(rows) {
-  if (!rows?.length) return ''
+  if (!rows || !rows.length) return ''
   const headers = Object.keys(rows[0])
-  const esc = v => `"${String(v ?? '').replaceAll('"', '""')}"`
-  return [headers.join(','), ...rows.map(r => headers.map(h => esc(r[h])).join(','))].join('\n')
+  const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`
+  return [
+    headers.join(','),
+    ...rows.map(r => headers.map(h => esc(r[h])).join(','))
+  ].join('\n')
 }
 function download(filename, text) {
   const blob = new Blob([text], { type: 'text/csv;charset=utf-8;' })
@@ -390,7 +480,8 @@ function exportCsv() {
     체크인: dt(r.checkInDate),
     체크아웃: dt(r.checkOutDate),
     예약일시: formatDateTime(r.reservationDate),
-    결제상태: r.paymentLabel
+    결제상태: r.paymentLabel,
+    호텔명: hotelTitleOf(r)
   }))
   download('reservations.csv', toCsv(rowsOut))
 }

@@ -56,8 +56,11 @@
       <button
         class="btn"
         type="button"
+        :class="{ active: showCalendar }"
+        :aria-pressed="showCalendar ? 'true' : 'false'"
         @click="$emit('toggle-calendar')"
         aria-controls="calendar-panel"
+        title="캘린더 보기/숨기기"
       >
         캘린더
       </button>
@@ -106,13 +109,17 @@ defineProps({
   checkedCount: { type: Number, default: 0 },
   /** ⬇️ 날짜 검색 값을 부모와 양방향으로 */
   startDate: { type: String, default: '' }, // 'YYYY-MM-DD'
-  endDate:   { type: String, default: '' }  // 'YYYY-MM-DD'
+  endDate:   { type: String, default: '' }, // 'YYYY-MM-DD'
+  /** 캘린더 표시 상태(버튼 활성 스타일/ARIA) */
+  showCalendar: { type: Boolean, default: false }
 })
 
 defineEmits([
   'update:bulk',
   'update:q',
   'update:scope',
+  'update:startDate',
+  'update:endDate',
   'search',
   'apply-bulk',
   'toggle-calendar',
@@ -197,7 +204,13 @@ defineEmits([
 .btn:active:not(:disabled) { transform: translateY(0); box-shadow: var(--shadow-soft); }
 .btn:disabled { opacity: .55; cursor: not-allowed; transform: none; box-shadow: none; }
 
-/* 보조 버튼 톤(날짜 검색) */
+/* 캘린더 버튼 활성 스타일 */
+.btn.active {
+  background: #16a34a;
+  border-color: #16a34a;
+  box-shadow: var(--shadow);
+}
+
 .btn.ghost {
   background: #fff;
   color: #111827;

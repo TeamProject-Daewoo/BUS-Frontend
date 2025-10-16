@@ -2,8 +2,11 @@
   <table class="table">
     <thead>
       <tr>
-        <th style="width:42px"><input type="checkbox" :checked="allChecked" @change="$emit('toggle-all', $event)" /></th>
-        <th style="width:110px">예약 ID</th>
+        <th style="width:42px">
+          <input type="checkbox" :checked="allChecked" @change="$emit('toggle-all', $event)" />
+        </th>
+        <!-- 예약 ID → 호텔 이름 -->
+        <th style="width:180px">호텔 이름</th>
         <th>고객</th>
         <th style="width:160px">객실</th>
         <th style="width:130px">연락처</th>
@@ -18,12 +21,24 @@
 
     <tbody>
       <tr v-for="r in rows" :key="r.reservationId">
-        <td><input type="checkbox" :checked="checkedSet.has(r.reservationId)" @change="$emit('toggle', r.reservationId)" /></td>
-        <td class="id">{{ r.reservationId }}</td>
+        <td>
+          <input
+            type="checkbox"
+            :checked="checkedSet.has(r.reservationId)"
+            @change="$emit('toggle', r.reservationId)"
+          />
+        </td>
+
+        <!-- 예약 ID → 호텔 이름 표시 -->
+        <td class="hotel" :title="r.hotelTitle || '-'">
+          {{ r.hotelTitle || '-' }}
+        </td>
 
         <!-- 고객 -->
         <td class="customer">
-          <div class="avatar" :style="{ background: avatarColor(r.customerName) }">{{ initials(r.customerName) }}</div>
+          <div class="avatar" :style="{ background: avatarColor(r.customerName) }">
+            {{ initials(r.customerName) }}
+          </div>
           <div class="c-info">
             <div class="c-name">{{ r.customerName || '-' }}</div>
             <div class="c-sub">{{ r.userEmail || r.userName || '-' }}</div>
@@ -31,7 +46,9 @@
         </td>
 
         <!-- 객실 -->
-        <td :title="titleTooltip(r)"><span class="room-name">{{ resolvedRoomTitle(r) }}</span></td>
+        <td :title="titleTooltip(r)">
+          <span class="room-name">{{ resolvedRoomTitle(r) }}</span>
+        </td>
 
         <!-- 연락처 -->
         <td>{{ r.userPhone || r.reservPhone || '-' }}</td>
@@ -42,20 +59,22 @@
 
         <!-- 예약 상태 -->
         <td>
-          <span 
+          <span
             class="badge"
-            :class="{ 
-            warning: isCancelling[r.reservationId] || r.statusType === 'pending', 
-            success: !isCancelling[r.reservationId] && r.statusType==='active', 
-            danger: !isCancelling[r.reservationId] && r.statusType==='cancel',
-          }">
+            :class="{
+              warning: isCancelling[r.reservationId] || r.statusType === 'pending',
+              success: !isCancelling[r.reservationId] && r.statusType==='active',
+              danger: !isCancelling[r.reservationId] && r.statusType==='cancel',
+            }"
+          >
             {{ isCancelling[r.reservationId] ? '취소 중..' : r.statusLabel }}
           </span>
         </td>
+
         <td style="padding-left: 8px;">
-          <button 
-            :disabled="currentDate >= r.checkInDate || r.statusType!=='active' || isCancelling[r.reservationId]" 
-            class="cancel-btn" 
+          <button
+            :disabled="currentDate >= r.checkInDate || r.statusType!=='active' || isCancelling[r.reservationId]"
+            class="cancel-btn"
             @click="$emit('delete', r)"
           >
             {{ isCancelling[r.reservationId] ? '처리 중' : '취소' }}
@@ -63,7 +82,9 @@
         </td>
       </tr>
 
-      <tr v-if="!rows.length"><td colspan="13" class="empty">데이터가 없습니다</td></tr>
+      <tr v-if="!rows.length">
+        <td colspan="13" class="empty">데이터가 없습니다</td>
+      </tr>
     </tbody>
   </table>
 </template>
@@ -82,11 +103,19 @@ const props = defineProps({
   titleTooltip: { type: Function, required: true },
   isCancelling: { type: Object }
 })
-defineEmits(['toggle', 'toggle-all', 'edit'])
+defineEmits(['toggle', 'toggle-all', 'edit', 'delete'])
 
 // local helpers (원본 유틸 그대로 동작)
-function initials(name){ const v=(name||'').trim(); if(!v) return '—'; const parts=v.split(/\s+/); return (parts[0][0]||'')+(parts[1]?.[0]||'') }
-function avatarColor(seed){ const s=(seed||'A').charCodeAt(0); const h=(s*37)%360; return `hsl(${h} 70% 90%)` }
+function initials(name){
+  const v=(name||'').trim(); if(!v) return '—';
+  const parts=v.split(/\s+/);
+  return (parts[0][0]||'')+(parts[1]?.[0]||'')
+}
+function avatarColor(seed){
+  const s=(seed||'A').charCodeAt(0);
+  const h=(s*37)%360;
+  return `hsl(${h} 70% 90%)`
+}
 </script>
 
 <style scoped>
@@ -110,7 +139,8 @@ tbody tr:hover td { background:#f8fafc; }
 .pay.paid { color:#16a34a; }
 .pay.due  { color:#d97706; }
 
-.id { color:var(--primary); font-weight:600; }
+/* 예약 ID → 호텔 이름 표시 스타일 */
+.hotel { font-weight:600; color: var(--primary-ink, #111827); }
 
 .cancel { text-align: left; justify-content: start;}
 .cancel-btn { padding:4px 8px; text-align:left; background:#fff; border:none; cursor:pointer; font-size:14px; border: 1px solid rgb(157, 157, 157); border-radius: 50px;}
