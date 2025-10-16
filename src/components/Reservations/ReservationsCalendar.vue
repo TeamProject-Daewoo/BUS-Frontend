@@ -79,21 +79,25 @@
         <!-- 예약 칩: 1열 -->
         <transition-group name="chiplist" tag="div" class="chips" @click.stop>
           <div
-            v-for="(b, idx) in visibleItems(d)"
-            :key="b.id ?? `${d.key}-${b.customerName}-${b.email}-${idx}`"
-            class="booking-chip"
-            :class="{
-              pending: b.statusType==='pending',
-              cancel: b.statusType==='cancel',
-              active: b.statusType==='active'
-            }"
-            :title="chipTitle(b)"
-            role="button"
-            tabindex="0"
-            @click="onClickBooking(b)"
-            @keydown.enter.prevent="onClickBooking(b)"
-            @keydown.space.prevent="onClickBooking(b)"
-          >
+  v-for="(b, idx) in visibleItems(d)"
+  :key="b.id ?? `${d.key}-${b.customerName}-${b.email}-${idx}`"
+  class="booking-chip"
+  :class="{
+    pending: b.statusType==='pending',
+    cancel: b.statusType==='cancel',
+    active: b.statusType==='active'
+  }"
+  :title="chipTitle(b)"
+  role="button"
+  tabindex="0"
+  @click.stop="onClickBooking(b)"
+  @mousedown.stop
+  @mouseup.stop
+  @touchstart.stop
+  @touchend.stop
+  @keydown.enter.stop.prevent="onClickBooking(b)"
+  @keydown.space.stop.prevent="onClickBooking(b)"
+>
             <!-- IN / OUT 코너 배지 -->
             <span v-if="isIn(b, d.key)" class="corner in">IN</span>
             <span v-else-if="isOut(b, d.key)" class="corner out">OUT</span>

@@ -5,14 +5,63 @@
         <th style="width:42px">
           <input type="checkbox" :checked="allChecked" @change="$emit('toggle-all', $event)" />
         </th>
-        <!-- 예약 ID → 호텔 이름 -->
-        <th style="width:180px">호텔 이름</th>
+
+        <th style="width:180px">호텔</th>
         <th>고객</th>
         <th style="width:160px">객실</th>
         <th style="width:130px">연락처</th>
         <th style="width:100px">성인</th>
-        <th style="width:130px">체크인</th>
-        <th style="width:130px">체크아웃</th>
+
+        <!-- 체크인(한 줄 유지 + 정렬/취소) -->
+        <th
+          style="width:130px"
+          class="th-sortable"
+          :class="{ active: sortKey==='checkInDate' }"
+          @click="toggleSort('checkInDate')"
+          role="button"
+          tabindex="0"
+          @keydown.enter.prevent="toggleSort('checkInDate')"
+          @keydown.space.prevent="toggleSort('checkInDate')"
+          aria-label="체크인으로 정렬"
+        >
+          <span class="th-inner">
+            <span class="label">체크인</span>
+            <span v-if="sortKey==='checkInDate'" class="sort-indicator">{{ sortDir==='asc' ? '▲' : '▼' }}</span>
+            <button
+              v-if="sortKey==='checkInDate'"
+              class="sort-cancel"
+              title="정렬 취소"
+              aria-label="체크인 정렬 취소"
+              @click.stop="clearSort"
+            >×</button>
+          </span>
+        </th>
+
+        <!-- 체크아웃(한 줄 유지 + 정렬/취소) -->
+        <th
+          style="width:130px"
+          class="th-sortable"
+          :class="{ active: sortKey==='checkOutDate' }"
+          @click="toggleSort('checkOutDate')"
+          role="button"
+          tabindex="0"
+          @keydown.enter.prevent="toggleSort('checkOutDate')"
+          @keydown.space.prevent="toggleSort('checkOutDate')"
+          aria-label="체크아웃으로 정렬"
+        >
+          <span class="th-inner">
+            <span class="label">체크아웃</span>
+            <span v-if="sortKey==='checkOutDate'" class="sort-indicator">{{ sortDir==='asc' ? '▲' : '▼' }}</span>
+            <button
+              v-if="sortKey==='checkOutDate'"
+              class="sort-cancel"
+              title="정렬 취소"
+              aria-label="체크아웃 정렬 취소"
+              @click.stop="clearSort"
+            >×</button>
+          </span>
+        </th>
+
         <th style="width:160px">예약일시</th>
         <th style="width:110px">예약 상태</th>
         <th style="width:56px;">관리</th>
@@ -20,7 +69,7 @@
     </thead>
 
     <tbody>
-      <tr v-for="r in rows" :key="r.reservationId">
+      <tr v-for="r in sortedRows" :key="r.reservationId">
         <td>
           <input
             type="checkbox"
@@ -29,7 +78,7 @@
           />
         </td>
 
-        <!-- 예약 ID → 호텔 이름 표시 -->
+        <!-- 호텔 이름 -->
         <td class="hotel" :title="r.hotelTitle || '-'">
           {{ r.hotelTitle || '-' }}
         </td>
@@ -50,7 +99,7 @@
           <span class="room-name">{{ resolvedRoomTitle(r) }}</span>
         </td>
 
-        <!-- 연락처 -->
+        <!-- 연락처/성인/일자 -->
         <td>{{ r.userPhone || r.reservPhone || '-' }}</td>
         <td>{{ r.numAdults ?? '-' }}</td>
         <td>{{ dt(r.checkInDate) }}</td>
@@ -82,7 +131,7 @@
         </td>
       </tr>
 
-      <tr v-if="!rows.length">
+      <tr v-if="!sortedRows.length">
         <td colspan="13" class="empty">데이터가 없습니다</td>
       </tr>
     </tbody>
@@ -90,6 +139,8 @@
 </template>
 
 <script setup>
+import { ref, computed } from 'vue'
+
 const today = new Date();
 const currentDate = today.toJSON().slice(0, 10);
 
@@ -101,11 +152,50 @@ const props = defineProps({
   formatDateTime: { type: Function, required: true },
   resolvedRoomTitle: { type: Function, required: true },
   titleTooltip: { type: Function, required: true },
-  isCancelling: { type: Object }
+  isCancelling: { type: Object, default: () => ({}) }
 })
 defineEmits(['toggle', 'toggle-all', 'edit', 'delete'])
 
-// local helpers (원본 유틸 그대로 동작)
+// === 정렬 상태 ===
+const sortKey = ref(null)        // 'checkInDate' | 'checkOutDate' | null
+const sortDir = ref('asc')       // 'asc' | 'desc'
+
+function toggleSort(key) {
+  if (sortKey.value === key) {
+    sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    sortKey.value = key
+    sortDir.value = 'asc'
+  }
+}
+function clearSort() {
+  sortKey.value = null
+  sortDir.value = 'asc'
+}
+
+function toTs(v) {
+  if (!v) return 0
+  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) {
+    const [y, m, d] = v.split('-').map(Number)
+    return Date.UTC(y, m - 1, d)
+  }
+  const t = Date.parse(v)
+  return Number.isNaN(t) ? 0 : t
+}
+
+const sortedRows = computed(() => {
+  if (!sortKey.value) return props.rows
+  const key = sortKey.value
+  const dir = sortDir.value === 'asc' ? 1 : -1
+  return [...props.rows].sort((a, b) => {
+    const ta = toTs(a[key])
+    const tb = toTs(b[key])
+    if (ta === tb) return 0
+    return ta < tb ? -1 * dir : 1 * dir
+  })
+})
+
+// local helpers
 function initials(name){
   const v=(name||'').trim(); if(!v) return '—';
   const parts=v.split(/\s+/);
@@ -135,11 +225,6 @@ tbody tr:hover td { background:#f8fafc; }
 .badge.warning{ background:#fff7e6; color:#d97706; }
 .badge.danger{  background:#ffe6e6; color:#dc2626; }
 
-.pay { font-weight:700; font-size:12px; }
-.pay.paid { color:#16a34a; }
-.pay.due  { color:#d97706; }
-
-/* 예약 ID → 호텔 이름 표시 스타일 */
 .hotel { font-weight:600; color: var(--primary-ink, #111827); }
 
 .cancel { text-align: left; justify-content: start;}
@@ -156,4 +241,23 @@ tbody tr:hover td { background:#f8fafc; }
 .fade-slide-leave-to { opacity: 0; transform: translateY(-5px); }
 
 .empty { text-align:center; color:#6b7280; }
+
+/* === 한 줄 고정 정렬 헤더 === */
+.th-sortable {
+  user-select:none; cursor:pointer;
+  white-space: nowrap; /* 줄바꿈 금지 */
+}
+.th-sortable .th-inner {
+  display:inline-flex; align-items:center; gap:6px;
+  line-height: 1; /* 높이 최소화 */
+}
+.th-sortable.active { color:#0f172a; font-weight:700; }
+.sort-indicator { font-size:12px; }
+.sort-cancel {
+  display:inline-flex; align-items:center; justify-content:center;
+  width:18px; height:18px; line-height:18px;
+  border-radius:999px; border:1px solid #d1d5db; background:#fff;
+  font-size:12px; padding:0; cursor:pointer;
+}
+.sort-cancel:hover { background:#f3f4f6; }
 </style>
