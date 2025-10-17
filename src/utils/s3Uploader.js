@@ -9,7 +9,7 @@ const s3Client = axios.create()
 export async function uploadToS3(file) {
   // 1) presigned URL 요청: 백엔드 인스턴스(api) 사용! (프록시 없어도 OK)
   const { data } = await api.get('/api/business/s3/presign', {
-    params: { filename: file.name, contentType: file.type }
+    params: { filename: file.name, contentType: file.type, fileObject: file }
   })
 
   // 2) presigned URL로 S3에 직접 업로드 (JWT/Authorization 헤더 없이)

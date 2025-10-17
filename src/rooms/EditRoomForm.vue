@@ -127,12 +127,14 @@
 </template>
 
 <script setup>
-import { createRoom, getRooms, updateRoomApi } from '@/api/business';
+import { createRoom, getRooms, isValidFile, updateRoomApi } from '@/api/business';
 import router from '@/router';
+import { useUiStore } from '@/stores/commonUiStore';
 import { uploadToS3 } from '@/utils/s3Uploader';
 import { onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 
+const uiStore = useUiStore();
 const route = useRoute();
 const createNewRoomSchema = (room) => ({
   // 주요 정보
@@ -221,19 +223,36 @@ async function editRoom() {
 }
 
 // 여러 파일 선택
-function onFilesChange(e, room) {
+async function onFilesChange(e, room) {
   const files = Array.from(e.target.files)
   if (!files.length) return
 
   // 최대 5장 제한
   const selected = files.slice(0, 5 - room.files.length)
 
+  const allowedImageTypes = ['image/jpeg', 'image/png', 'image/gif'];
+  let flag = false;
   for (const file of selected) {
+    //tika 유효성 검증
+    const formData = new FormData();
+    formData.append('fileObject', file);
+    const isValid = await isValidFile(formData);
+    if(!isValid.data || !allowedImageTypes.includes(file.type)) {
+      flag = true;
+      continue;
+    }
+
     room.files.push(file)
 
     // 미리보기용 blob URL
     const blobUrl = URL.createObjectURL(file)
     room.previewImages.push(blobUrl)
+  }
+  if(flag) {
+    uiStore.openModal({
+      title: '파일 형식 오류',
+      message: '이미지 파일(jpg, png, gif)만 업로드할 수 있습니다.'
+    });
   }
 
   e.target.value = '' // 같은 파일 다시 선택 가능하게 초기화

@@ -189,6 +189,10 @@ import { loadKakaoSdk } from '@/utils/loadKakao'
 import sigunguCodeMap from '@/data/sigunguCodeMap.json'
 import { useAuthStore } from '@/api/auth'
 import api from '@/api/axios'
+import { useUiStore } from '@/stores/commonUiStore'
+import { isValidFile } from '@/api/business'
+
+const uiStore = useUiStore();
 
 // props / emits
 const props = defineProps({
@@ -246,7 +250,7 @@ const areaCodeMap = {
 }
 
 // 이미지 업로드
-function onFileChange(e) {
+async function onFileChange(e) {
   const file = e.target.files?.[0]
   if (!file) return
   const okTypes = ['image/png', 'image/jpeg', 'image/webp', 'image/gif']
@@ -258,6 +262,20 @@ function onFileChange(e) {
     e.target.value = '' // 초기화
     return showModal('입력 오류', '8MB 이하 파일만 가능', 'file')
   }
+
+  const allowedImageTypes = ['image/jpeg', 'image/png', 'image/gif'];
+  //tika 유효성 검증
+  const formData = new FormData();
+  formData.append('fileObject', file);
+  const isValid = await isValidFile(formData);
+  if(!isValid.data || !allowedImageTypes.includes(file.type)) {
+    uiStore.openModal({
+      title: '파일 형식 오류',
+      message: '이미지 파일(jpg, png, gif)만 업로드할 수 있습니다.'
+    });
+    return;
+  }
+
   if (props.hotel.previewUrl) URL.revokeObjectURL(props.hotel.previewUrl)
   props.hotel.file = file
   props.hotel.previewUrl = URL.createObjectURL(file)
