@@ -260,7 +260,7 @@ async function onFileChange(e) {
   }
   if (file.size > 8 * 1024 * 1024) {
     e.target.value = '' // 초기화
-    return showModal('입력 오류', '8MB 이하 파일만 가능', 'file')
+    return showModal('입력 오류', '8MB 이하 파일만 가능합니다.', 'file')
   }
 
   const allowedImageTypes = ['image/jpeg', 'image/png', 'image/gif'];
@@ -355,7 +355,12 @@ function mergeAddressAndNext() {
 
 // 모달
 function showModal(title, message, focusKey = null) {
-  modal.value = { show: true, title, message, focusKey }
+  modal.value.focusKey = focusKey;
+  uiStore.openModal({
+    title: title,
+    message: message
+  });
+  //modal.value = { show: false, title, message, focusKey }
 }
 async function handleModalConfirm() {
   const key = modal.value.focusKey
