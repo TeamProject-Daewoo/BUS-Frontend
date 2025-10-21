@@ -47,22 +47,32 @@
         <span>고객센터: 1588-0000 (09:00 - 18:00)</span>
         <span>이메일: support@hotelhub.com</span>
       </div>
-      <p class="copyright">
-        © 2025 HotelHub Inc. All rights reserved.
-      </p>
+      <p class="copyright">© 2025 HotelHub Inc. All rights reserved.</p>
     </div>
   </footer>
 </template>
 
 <style scoped>
+/* ========== 핵심: 부모 max-width 무시하고 배경을 화면 양끝까지 확장 ========== */
+/* box-shadow로 거대한 외곽을 칠하고, clip-path로 좌우 클리핑을 해제 */
 .footer-container {
-  background-color: #1a1a1a;
+  --bg: #1a1a1a;
+  background-color: var(--bg);
   color: #a8a8a8;
-  padding: 50px 8%;
+
+  /* 화면 끝까지 시각적으로 배경 확장 */
+  box-shadow: 0 0 0 100vmax var(--bg);
+  clip-path: inset(0 -100vmax);
+
+  /* 기존 패딩/폰트 */
+  padding: 50px clamp(16px, 8vw, 96px);
   font-family: 'Pretendard', sans-serif;
 }
 
+/* 내부 컨텐츠는 중앙 정렬 + 최대 폭 */
 .footer-content {
+  max-width: 1200px;
+  margin: 0 auto;
   display: flex;
   justify-content: space-between;
   flex-wrap: wrap;
@@ -73,7 +83,7 @@
 }
 
 .footer-column {
-  flex: 1;
+  flex: 1 1 220px;
   min-width: 200px;
 }
 
@@ -88,12 +98,11 @@
   height: 40px;
   filter: brightness(0) invert(1);
   margin-bottom: 15px;
+  max-width: 100%;
+  object-fit: contain;
 }
 
-.brand-description {
-  font-size: 14px;
-  line-height: 1.6;
-}
+.brand-description { font-size: 14px; line-height: 1.6; }
 
 .links-section a {
   display: block;
@@ -103,64 +112,40 @@
   font-size: 14px;
   transition: color 0.2s ease-in-out;
 }
+.links-section a:hover { color: #ffffff; }
 
-.links-section a:hover {
-  color: #ffffff;
-}
-
-.social-icons {
-  display: flex;
-  gap: 15px;
-}
-
+.social-icons { display: flex; gap: 15px; }
 .social-icons a {
   color: #a8a8a8;
   font-size: 18px;
   transition: color 0.2s ease-in-out;
 }
-
-.social-icons a:hover {
-  color: #ffffff;
-}
+.social-icons a:hover { color: #ffffff; }
 
 .footer-bottom {
+  max-width: 1200px;
+  margin: 0 auto;
   text-align: center;
 }
 
 .business-info {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  align-items: center;
+  justify-content: center;
   font-size: 12px;
   line-height: 1.8;
   margin-bottom: 20px;
   color: #777;
 }
+.business-info span { white-space: normal; }
 
-.business-info span {
-  margin-right: 15px;
-  white-space: nowrap;
-}
-
-.copyright {
-  font-size: 12px;
-  color: #555;
-}
+.copyright { font-size: 12px; color: #555; }
 
 @media (max-width: 768px) {
-  .footer-content {
-    flex-direction: column;
-    text-align: center;
-  }
-
-  .brand-section .footer-logo {
-    margin-left: auto;
-    margin-right: auto;
-  }
-
-  .social-icons {
-    justify-content: center;
-  }
-
-  .business-info br {
-    display: block;
-  }
+  .footer-content { flex-direction: column; text-align: center; }
+  .brand-section .footer-logo { margin-left: auto; margin-right: auto; }
+  .social-icons { justify-content: center; }
 }
 </style>

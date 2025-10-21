@@ -76,3 +76,11 @@ export const registerHotel = (payload) =>
 // 특별가 목록 가져오기
 export const getPriceOverrides = (contentid) =>
   api.get(`${BASE_URL}/prices/list${q(contentid)}`)
+
+//tika 유효성 검증 요청
+export const isValidFile = (formData) =>
+  api.post(`${BASE_URL}/checkVaild`, formData, {
+      headers: {
+          'Content-Type': 'multipart/form-data',
+      }
+  });

@@ -6,23 +6,43 @@
       @export="exportCsv"
     />
 
-    <!-- 툴바 -->
+    <!-- 툴바 (날짜 입력 + 캘린더 버튼) -->
     <ReservationsToolbar
       :bulk="bulk"
-      :start-date="startDate"
-      :end-date="endDate"
       :q="q"
       :scope="scope"
       :checked-count="checked.size"
+      :start-date="startDate"
+      :end-date="endDate"
+      :show-calendar="showCalendar"
       @update:bulk="v => (bulk = v)"
-      @update:startDate="v => (startDate = v)"
-      @update:endDate="v => (endDate = v)"
       @update:q="v => (q = v)"
       @update:scope="onScopeSelected"
-      @search="filter"
+      @update:startDate="v => (startDate = v)"
+      @update:endDate="v => (endDate = v)"
+      @search="onDateSearch"
       @apply-bulk="applyBulk"
-      @clear-dates="() => { startDate = ''; endDate = '' }"
+      @toggle-calendar="showCalendar = !showCalendar"
     />
+
+    <!-- 캘린더 패널: 검색 매칭 rows만 전달 -->
+    <div
+      v-if="showCalendar"
+      class="card"
+      id="calendar-panel"
+      style="margin: 12px 0;"
+    >
+      <ReservationsCalendar
+        :reservations="rowsForCalendar"
+        :month="calendarMonth"
+        :room-resolver="resolvedRoomTitle"
+        :hotel-resolver="hotelResolver"
+        :hotel-title-default="scope==='single' ? currentHotelTitle : ''"
+        @update:month="v => (calendarMonth = v)"
+        @select-date="onDateSelected"
+        @search-name="doSearchByName"
+      />
+    </div>
 
     <!-- 안내 -->
     <div class="hint" v-if="scope==='single' && !store.selectedContentId">
@@ -35,7 +55,6 @@
         :rows="paged"
         :all-checked="allChecked"
         :checked-set="checked"
-        :more-open="moreOpen"
         :isCancelling="isCancelling"
         :dt="dt"
         :format-date-time="formatDateTime"
@@ -43,7 +62,6 @@
         :title-tooltip="titleTooltip"
         @toggle="toggle"
         @toggle-all="toggleAll"
-        @toggle-more="toggleMore"
         @delete="deleteReservation"
       />
     </div>
@@ -70,62 +88,107 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, reactive } from 'vue'
+import { ref, computed, watch, reactive, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useHotelStore } from '@/stores/hotel'
 import { getReservations, getRooms, bulkReservations, updateReservation } from '@/api/business'
-import { useUiStore } from '@/stores/commonUiStore';
+import { useUiStore } from '@/stores/commonUiStore'
+import api from '@/api/axios'
 
 import ReservationsHeader from './ReservationsHeader.vue'
 import ReservationsToolbar from './ReservationsToolbar.vue'
 import ReservationsTable from './ReservationsTable.vue'
 import ReservationsPager from './ReservationsPager.vue'
 import ReservationsEditModal from './ReservationsEditModal.vue'
-import api from '@/api/axios';
+import ReservationsCalendar from './ReservationsCalendar.vue'
 
 const store = useHotelStore()
-const uiStore = useUiStore();
+const uiStore = useUiStore()
+
+// ── 호텔 목록 선로딩 (호텔명 매핑 안정화)
+onMounted(async () => {
+  if (!store.hotels?.length) {
+    await store.loadHotels()
+  }
+})
 
 // ── state
 const rows = ref([])
 const q = ref('')
 const page = ref(1)
 const size = ref(10)
-let bulk = ref('')
+const bulk = ref('')
 const checked = ref(new Set())
 
-let startDate = ref('')
-let endDate = ref('')
-let scope = ref('single')
+const scope = ref('single')
 
-// 더보기
-const moreOpen = ref(null)
-function toggleMore(id) { moreOpen.value = moreOpen.value === id ? null : id }
+// ✅ 캘린더 월/선택 + 표시 토글
+const calendarMonth = ref(new Date().toISOString().slice(0, 7))
+const selectedDay = ref('')                         // 'YYYY-MM-DD'
+const selectedRange = ref({ start: '', end: '' })   // {start,end}
+const showCalendar = ref(false)                     // 캘린더 표시 여부
 
-// 삭제 모달
-let editing = ref(null)
-const isCancelling = reactive({});
+// 날짜 검색 입력값(툴바)
+const startDate = ref('') // 'YYYY-MM-DD'
+const endDate   = ref('') // 'YYYY-MM-DD'
+
+// 날짜 선택 시 즉시 필터 적용 + 입력값과 동기화 (문자열 or {start,end} or '')
+function onDateSelected(payload) {
+  if (typeof payload === 'string') {
+    // 단일 날짜
+    selectedDay.value = payload || ''
+    selectedRange.value = { start: '', end: '' }
+    // 입력도 동일하게 맞추기 (단일이면 start=end)
+    startDate.value = payload || ''
+    endDate.value = payload || ''
+  } else if (payload && payload.start && payload.end) {
+    // 구간
+    selectedDay.value = ''
+    selectedRange.value = { start: payload.start, end: payload.end }
+    startDate.value = payload.start
+    endDate.value = payload.end
+  } else {
+    // 해제
+    selectedDay.value = ''
+    selectedRange.value = { start: '', end: '' }
+    startDate.value = ''
+    endDate.value = ''
+  }
+  filter()
+}
+
+// “날짜 검색” 버튼 → 입력값을 기준으로 필터 (캘린더 선택은 비움)
+function onDateSearch() {
+  if (startDate.value || endDate.value) {
+    selectedDay.value = ''
+    selectedRange.value = { start: '', end: '' }
+  }
+  filter()
+}
+
+// 삭제/수정 관련
+const editing = ref(null)
+const isCancelling = reactive({})
 async function deleteReservation(r) {
-  moreOpen.value = null
   await uiStore.openModal({
     title: '예약 취소',
     message: '정말로 예약을 취소 하시겠습니까?',
     showCancel: true,
     confirmText: '예',
     cancelText: '아니요'
-  });
-  isCancelling[r.reservationId] = true; 
+  })
+  isCancelling[r.reservationId] = true
   try {
-    const response = await api.post('/api/payment/cancel', {
-        reservationId: r.reservationId,
-        cancelReason: '고객 요청'
-    });
-    await loadReservations(); 
+    await api.post('/api/payment/cancel', {
+      reservationId: r.reservationId,
+      cancelReason: '고객 요청'
+    })
+    await loadReservations()
   } catch (error) {
-      console.error("예약 취소 실패:", error);
-      uiStore.openModal({title:"취소 실패", message:'잠시 후 다시 시도해 주세요.'});
+    console.error('예약 취소 실패:', error)
+    uiStore.openModal({ title: '취소 실패', message: '잠시 후 다시 시도해 주세요.' })
   } finally {
-      isCancelling[r.reservationId] = false;
+    isCancelling[r.reservationId] = false
   }
 }
 async function saveEdit(form) {
@@ -144,16 +207,16 @@ async function saveEdit(form) {
       paymentId: form.paymentId
     })
 
-    uiStore.openModal({title:'수정 완료'})
+    uiStore.openModal({ title: '수정 완료' })
     editing.value = null
     await loadReservations()
   } catch (e) {
     console.error(e)
-    uiStore.openModal({title:'수정 실패'})
+    uiStore.openModal({ title: '수정 실패' })
   }
 }
 
-// 객실명 처리
+/* ================== 객실명 처리 ================== */
 const titleById = ref({})
 const titleByCode = ref({})
 const norm = (v) => String(v ?? '').trim().toLowerCase()
@@ -172,7 +235,32 @@ function resolvedRoomTitle(r) {
 }
 function titleTooltip(r) { return `객실: ${resolvedRoomTitle(r)}${r.roomcode ? ` / 코드: ${r.roomcode}` : ''}` }
 
-// 데이터 로드
+/* ================== 호텔명 매핑 ================== */
+const hotelTitleMap = computed(() =>
+  Object.fromEntries((store.hotels || []).map(h => [
+    String(h.contentid ?? h.id ?? ''), String(h.title ?? h.contentTitle ?? h.name ?? '')
+  ]))
+)
+const currentHotelTitle = computed(() => {
+  const id = String(store.selectedContentId ?? '')
+  return hotelTitleMap.value[id] || ''
+})
+
+function hotelTitleOf(r) {
+  const direct = r.hotelTitle || r.hotel || r.hotelName || r.contentTitle || ''
+  if (direct) return direct
+  const key = String(r.contentId ?? r.contentid ?? '')
+  if (key && hotelTitleMap.value[key]) return hotelTitleMap.value[key]
+  if (scope.value === 'single' && store.selectedContentId) {
+    return hotelTitleMap.value[String(store.selectedContentId)] || ''
+  }
+  return ''
+}
+function hotelResolver(row) {
+  return hotelTitleOf(row)
+}
+
+/* ================== 데이터 로드 ================== */
 watch(() => [store.selectedContentId, scope.value], async () => {
   if (scope.value === 'single' && !store.selectedContentId) { rows.value = []; return }
   await loadRooms()
@@ -223,7 +311,7 @@ function toUiRow(x) {
   const paymentStatus = (x.paymentStatus || '').toUpperCase()
   let paymentType = 'none'
   let paymentLabel = '—'
-  if (paymentStatus === 'PAID' || paymentStatus === 'DONE') { paymentType = 'paid'; paymentLabel = '결제완료' }
+  if (paymentStatus === 'PAID' || status === 'DONE') { paymentType = 'paid'; paymentLabel = '결제완료' }
   else if (paymentStatus === 'DUE') { paymentType = 'due'; paymentLabel = '미결제' }
   else if (paymentStatus === 'CANCELED') { paymentType = 'refund'; paymentLabel = '환불' }
 
@@ -238,6 +326,8 @@ function toUiRow(x) {
     checkInDate: x.checkInDate,
     checkOutDate: x.checkOutDate,
     reservationDate: x.reservationDate,
+    contentId: x.contentId ?? x.contentid,   // ✅ 호텔 매핑용
+    hotelTitle: x.hotelTitle || x.hotel || x.hotelName || x.contentTitle || '', // ✅ 보존(있으면 최우선 사용)
     roomcode: x.roomcode,
     roomtitle: x.roomtitle || '',
     statusType, statusLabel,
@@ -247,25 +337,84 @@ function toUiRow(x) {
   }
 }
 
-// 검색/필터/페이징
+/* ========== 검색/필터/페이징 ========== */
+
+// 텍스트 검색 매칭 함수 (고객명/아이디/이메일 기준)
+const matchesSearch = (r) => {
+  const kw = (q.value || '').trim().toLowerCase()
+  if (!kw) return true
+  return (
+    (r.customerName || '').toLowerCase().includes(kw) ||
+    (r.userName || '').toLowerCase().includes(kw) ||
+    (r.userEmail || '').toLowerCase().includes(kw)
+  )
+}
+
+// ✅ 캘린더 전용 리스트: "검색"만 반영 (선택은 반영 X)
+const rowsForCalendar = computed(() => {
+  return (rows.value || []).filter(matchesSearch)
+})
+
+function clip10(s){ return (s || '').slice(0,10) }
+
+// 표용 필터: 검색 + (1) 캘린더 단일 또는 구간 선택 우선, (2) 없으면 입력값으로 필터
 const filtered = computed(() => {
   let list = rows.value
-  if (q.value) {
-    const kw = q.value.trim().toLowerCase()
-    list = list.filter(r =>
-      (r.customerName || '').toLowerCase().includes(kw) ||
-      (r.userName || '').toLowerCase().includes(kw) ||
-      (r.userEmail || '').toLowerCase().includes(kw)
-    )
+
+  if (q.value) list = list.filter(matchesSearch)
+
+  // 1) 캘린더 선택 기준
+  const day = selectedDay.value
+  const { start, end } = selectedRange.value || { start: '', end: '' }
+
+  if (day) {
+    return list.filter(r => {
+      const inD  = clip10(r.checkInDate)
+      const outD = clip10(r.checkOutDate || r.checkInDate)
+      return inD && outD && day >= inD && day <= outD
+    })
   }
-  if (startDate.value) list = list.filter(r => r.checkInDate && r.checkInDate >= startDate.value)
-  if (endDate.value) list = list.filter(r => r.checkInDate && r.checkInDate <= endDate.value)
+  if (start && end) {
+    // 기간 겹침: !(B < A || A' < B')
+    return list.filter(r => {
+      const inD  = clip10(r.checkInDate)
+      const outD = clip10(r.checkOutDate || r.checkInDate)
+      if (!inD || !outD) return false
+      return !(outD < start || inD > end)
+    })
+  }
+
+  // 2) 입력값 기준 (한쪽만 있어도 처리)
+  const s = startDate.value
+  const e = endDate.value
+  if (s || e) {
+    return list.filter(r => {
+      const inD  = clip10(r.checkInDate)
+      const outD = clip10(r.checkOutDate || r.checkInDate)
+      if (!inD || !outD) return false
+      if (s && e) return !(outD < s || inD > e)        // 겹침
+      if (s && !e) return outD >= s                    // 시작만: s 이후(포함)
+      if (!s && e) return inD <= e                     // 끝만: e 이전(포함)
+      return true
+    })
+  }
+
   return list
 })
+
 const maxPage = computed(() => Math.max(1, Math.ceil(filtered.value.length / size.value)))
 const paged = computed(() => filtered.value.slice((page.value - 1) * size.value, page.value * size.value))
 const pages = computed(() => Array.from({ length: maxPage.value }, (_, i) => i + 1))
 function filter() { page.value = 1 }
+
+// ✅ 이름 클릭 → 검색 적용(토글)
+function doSearchByName(name) {
+  const incoming = String(name ?? '').trim()
+  const same = incoming.toLowerCase() === (q.value || '').trim().toLowerCase()
+  q.value = same ? '' : incoming
+  page.value = 1
+  filter()
+}
 
 const allChecked = computed(() => !!paged.value.length && paged.value.every(r => checked.value.has(r.reservationId)))
 function toggle(id) { const s = new Set(checked.value); s.has(id) ? s.delete(id) : s.add(id); checked.value = s }
@@ -292,11 +441,11 @@ async function applyBulk() {
   const ids = Array.from(checked.value)
   try {
     await bulkReservations(scope.value === 'single' ? store.selectedContentId : null, ids, bulk.value)
-    uiStore.openModal({title:'일괄 작업이 완료되었습니다.'})
+    uiStore.openModal({ title: '일괄 작업이 완료되었습니다.' })
     await loadReservations()
   } catch (e) {
     console.error(e)
-    uiStore.openModal({title:'일괄 작업 실패'})
+    uiStore.openModal({ title: '일괄 작업 실패' })
   }
   checked.value.clear()
   bulk.value = ''
@@ -304,10 +453,13 @@ async function applyBulk() {
 
 // CSV
 function toCsv(rows) {
-  if (!rows?.length) return ''
+  if (!rows || !rows.length) return ''
   const headers = Object.keys(rows[0])
-  const esc = v => `"${String(v ?? '').replaceAll('"', '""')}"`
-  return [headers.join(','), ...rows.map(r => headers.map(h => esc(r[h])).join(','))].join('\n')
+  const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`
+  return [
+    headers.join(','),
+    ...rows.map(r => headers.map(h => esc(r[h])).join(','))
+  ].join('\n')
 }
 function download(filename, text) {
   const blob = new Blob([text], { type: 'text/csv;charset=utf-8;' })
@@ -328,12 +480,13 @@ function exportCsv() {
     체크인: dt(r.checkInDate),
     체크아웃: dt(r.checkOutDate),
     예약일시: formatDateTime(r.reservationDate),
-    결제상태: r.paymentLabel
+    결제상태: r.paymentLabel,
+    호텔명: hotelTitleOf(r)
   }))
   download('reservations.csv', toCsv(rowsOut))
 }
 
-// scope 선택 시 즉시 로드 (기존 동작 보존)
+// scope 변경 시 재로드
 function onScopeSelected(v) {
   scope.value = v
   loadRooms()
@@ -342,13 +495,10 @@ function onScopeSelected(v) {
 </script>
 
 <style scoped>
-/* ───────── Theme tokens & page-level wrappers (공용 변수만 여기서) ───────── */
 .page { --primary:#2563eb; --primary-ink:#111827; --primary-hover:#1d4ed8; --success:#16a34a; --warning:#d97706; --danger:#dc2626; --border:#e5e7eb; --border-strong:#d1d5db; --muted:#6b7280; --bg:#ffffff; --shadow:0 6px 16px rgba(0,0,0,.06); --shadow-soft:0 2px 8px rgba(0,0,0,.05); --radius:12px; --radius-sm:8px; --ease:cubic-bezier(.2,.6,.2,1); }
 
-/* 컨테이너/카드 껍데기 */
-.card { padding:0; border:1px solid var(--border); border-radius:var(--radius); background:var(--bg); box-shadow: var(--shadow-soft); }
+.card { margin: 30px 0;padding:0; border:1px solid var(--border); border-radius:var(--radius); background:var(--bg); box-shadow: var(--shadow-soft); }
 .table-wrap { overflow: visible; border-radius: var(--radius); }
 
-/* 안내 */
 .hint { margin: 12px 0; color:var(--muted); }
 </style>

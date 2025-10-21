@@ -137,6 +137,11 @@
 </template>
 
 <script setup>
+import { isValidFile } from '@/api/business'
+import { useUiStore } from '@/stores/commonUiStore'
+
+const uiStore = useUiStore();
+
 const props = defineProps({ rooms: Array })
 const emits = defineEmits(['next', 'prev'])
 
@@ -168,19 +173,44 @@ function addRoom() {
 }
 
 // 여러 파일 선택
-function onFilesChange(e, room) {
+async function onFilesChange(e, room) {
   const files = Array.from(e.target.files)
   if (!files.length) return
 
   // 최대 5장 제한
   const selected = files.slice(0, 5 - room.files.length)
 
+  const allowedImageTypes = ['image/jpeg', 'image/png', 'image/gif'];
+  let flag = false, imageSizeFlag = false;
+  let modalMessage = '';
   for (const file of selected) {
+    //파일 용량 제한
+    if (file.size > 8 * 1024 * 1024) {
+      imageSizeFlag = true;
+      modalMessage = '8MB 이하 파일만 가능합니다.'
+      continue;
+    }
+    //tika 유효성 검증
+    const formData = new FormData();
+    formData.append('fileObject', file);
+    const isValid = await isValidFile(formData);
+    if(!isValid.data || !allowedImageTypes.includes(file.type)) {
+      flag = true;
+      modalMessage = '이미지 파일(jpg, png, gif)만 업로드할 수 있습니다.';
+      continue;
+    }
+
     room.files.push(file)
 
     // 미리보기용 blob URL
     const blobUrl = URL.createObjectURL(file)
     room.previewImages.push(blobUrl)
+  }
+  if(flag || imageSizeFlag) {
+    uiStore.openModal({
+      title: '파일 형식 오류',
+      message: modalMessage
+    });
   }
 
   e.target.value = '' // 같은 파일 다시 선택 가능하게 초기화

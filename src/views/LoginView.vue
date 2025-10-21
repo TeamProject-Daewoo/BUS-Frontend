@@ -21,6 +21,19 @@
             </div>
           </div>
 
+          <!-- ✅ reCAPTCHA 추가 -->
+          <div class="input-group">
+            <div
+              ref="recaptchaBox"
+              class="g-recaptcha"
+              :data-sitekey="siteKey"
+              data-callback="onCaptchaSuccess"
+              data-expired-callback="onCaptchaExpired">
+            </div>
+            <p v-if="captchaError" class="captcha-error">reCAPTCHA 인증이 필요합니다.</p>
+          </div>
+          <!-- ✅ 끝 -->
+
           <div class="options">
             <div class="remember-me">
               <input type="checkbox" id="remember" v-model="rememberMe" />
@@ -51,9 +64,9 @@
 
 <script setup>
 import Sidemenu from '@/components/sidepage/loginside.vue';
-import { ref, watch } from 'vue';
-import { useRouter } from 'vue-router'; // useRouter 임포트
-import api from '@/api/axios'; // 우리가 만든 axios 인스턴스 임포트
+import { ref, watch, onMounted, onBeforeUnmount } from 'vue';
+import { useRouter } from 'vue-router';
+import api from '@/api/axios';
 import { useAuthStore } from '@/api/auth';
 import { useUiStore } from '@/stores/commonUiStore';
 
@@ -62,38 +75,108 @@ const user_name = ref('');
 const password = ref('');
 const rememberMe = ref(false);
 const passwordFieldType = ref('password');
-const router = useRouter(); // router 인스턴스 생성
+const router = useRouter();
 const authStore = useAuthStore();
 
-watch(user_name, (newValue) => {
-  // 정규식: 영어 대소문자(a-z, A-Z)와 숫자(0-9)가 아닌 모든 문자를 찾음
-  const regex = /[^a-zA-Z0-9]/g;
-  
-  // 특수문자를 빈 문자열로 대체하여 제거
-  const sanitizedValue = newValue.replace(regex, '');
+/** ✅ reCAPTCHA 관련 (UI/토큰만 추가) */
+const siteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY || 'SITE_KEY_HERE';
+const recaptchaBox = ref(null);
+const recaptchaToken = ref(null);
+const captchaError = ref(false);
 
-  // 변경된 값이 원래 값과 다를 경우에만 업데이트 (무한 루프 방지)
+function bindCaptchaCallbacks() {
+  window.onCaptchaSuccess = (token) => {
+    recaptchaToken.value = token;
+    captchaError.value = false;
+  };
+  window.onCaptchaExpired = () => {
+    recaptchaToken.value = null;
+  };
+}
+function renderCaptchaIfReady() {
+  if (window.grecaptcha?.render && recaptchaBox.value) {
+    try {
+      if (!recaptchaBox.value.children.length) {
+        window.grecaptcha.render(recaptchaBox.value, {
+          sitekey: siteKey,
+          callback: 'onCaptchaSuccess',
+          'expired-callback': 'onCaptchaExpired',
+        });
+      }
+    } catch (e) {
+      console.warn('reCAPTCHA render 실패', e);
+    }
+  }
+}
+function ensureCaptchaScript() {
+  if (document.querySelector('script[src*="recaptcha/api.js"]')) return;
+  const s = document.createElement('script');
+  s.src = 'https://www.google.com/recaptcha/api.js';
+  s.async = true;
+  s.defer = true;
+  s.onload = () => renderCaptchaIfReady();
+  document.head.appendChild(s);
+}
+onMounted(() => {
+  bindCaptchaCallbacks();
+  ensureCaptchaScript();
+  setTimeout(renderCaptchaIfReady, 0);
+});
+onBeforeUnmount(() => {
+  delete window.onCaptchaSuccess;
+  delete window.onCaptchaExpired;
+});
+/** ✅ reCAPTCHA 끝 */
+
+/** 아이디 특수문자 제거 */
+watch(user_name, (newValue) => {
+  const regex = /[^a-zA-Z0-9]/g;
+  const sanitizedValue = newValue.replace(regex, '');
   if (newValue !== sanitizedValue) {
     user_name.value = sanitizedValue;
   }
 });
 
 const handleLogin = async () => {
+  // ✅ reCAPTCHA 토큰 없으면 제출 막고 알림
+  if (!recaptchaToken.value) {
+    captchaError.value = true;
+    uiStore.openModal({
+      title: 'reCAPTCHA 확인 필요',
+      message: 'reCAPTCHA 확인란을 체크해주세요.',
+    });
     try {
-        const response = await api.post('/api/auth/login', {
-            username: user_name.value,
-            password: password.value,
-        });
-        
-        // Body로 받은 Access Token을 Pinia 스토어에 저장
-        authStore.setToken(response.data.accessToken);
+      recaptchaBox.value?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const iframe = recaptchaBox.value?.querySelector('iframe');
+      iframe?.focus?.();
+    } catch {}
+    return;
+  }
 
-        router.push('/dashboard'); //메인페이지로 이동
+  try {
+    const response = await api.post('/api/auth/login', {
+      username: user_name.value,
+      password: password.value,
+      // ✅ 백엔드 검증용으로 토큰만 추가 전송
+      recaptchaToken: recaptchaToken.value,
+    });
 
-    } catch (error) {
-      console.error("로그인 실패:", error);
-      uiStore.openModal({title:'로그인 실패', message:"아직 승인되지 않은 사용자거나 아이디 또는 비밀번호가 올바르지 않습니다."});
+    // Body로 받은 Access Token을 Pinia 스토어에 저장
+    authStore.setToken(response.data.accessToken);
+
+    router.push('/dashboard'); // 메인페이지로 이동
+  } catch (error) {
+    console.error('로그인 실패:', error);
+    uiStore.openModal({
+      title: '로그인 실패',
+      message: '아직 승인되지 않은 사용자거나 아이디 또는 비밀번호가 올바르지 않습니다.',
+    });
+    // 실패 시 캡차 리셋
+    if (window.grecaptcha?.reset) {
+      window.grecaptcha.reset();
+      recaptchaToken.value = null;
     }
+  }
 };
 
 const togglePasswordVisibility = () => {
@@ -267,5 +350,11 @@ h1 {
 }
 .dot.active {
   background-color: #fff;
+}
+
+.captcha-error {
+  margin-top: 8px;
+  color: #c0392b;
+  font-size: 13px;
 }
 </style>
