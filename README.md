@@ -15,7 +15,7 @@
 
 ---
 
-<img width="1883" height="836" alt="image" src="https://github.com/user-attachments/assets/3d0f2944-0e46-4edc-8ffb-3c14074b4805" />
+<img width="1883" height="836" alt="image" src="https://github.com/user-attachments/assets/3d0f2944-0e46-4edc-8ffb-3c14074b4805"/>
 
 
 ## 🌿 프로젝트 소개
