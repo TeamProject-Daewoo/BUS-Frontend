@@ -20,6 +20,7 @@ import RoomStep from "@/components/HotelCreate/RoomStep.vue";
 import RreateRoomForm from '@/rooms/CreateRoomForm.vue'
 import CreateRoomForm from '@/rooms/CreateRoomForm.vue'
 import EditRoomForm from '@/rooms/EditRoomForm.vue'
+import errorPage from '@/components/common/errorPage.vue';
 
 const routes = [
   { path: '/',            name: 'Home',            component: MainLandingPage,  meta: { layout: 'EmptyLayout' } },
@@ -40,6 +41,7 @@ const routes = [
   { path: '/settings/:contentid',   name: 'settings-edit',   component: SettingsView,     props: true, meta: { requiresAuth: true } },
   { path: '/setprice',              name: 'SpecialPriceEditor', component: SpecialPriceEditor, props: true, meta: { requiresAuth: true, requiresHotel: true } },
   { path: '/mypage',      name: 'mypage',          component: MypageView },
+  { path: '/:pathMatch(.*)*', name: 'NotFound', component: errorPage,meta: { layout: 'EmptyLayout' }  }
 ]
 
 const router = createRouter({
